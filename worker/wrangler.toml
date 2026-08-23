@@ -1,0 +1,11 @@
+name = "biztrack-pro-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+# Set these with: wrangler secret put <NAME>
+#   MONGODB_URI      -> mongodb+srv://user:pass@cluster.mongodb.net
+#   JWT_SECRET        -> any long random string

@@ -2,76 +2,78 @@
 
 Enterprise sales, inventory, customer, supplier and expense management.
 
-- **API**: Cloudflare Workers (Hono + TypeScript), talking to MongoDB Atlas with the official Node driver (`nodejs_compat`) — no Data API needed (MongoDB retired that in Sept 2025).
+- **API**: Node.js server (Hono framework), deployed on Render's free tier — talks to MongoDB Atlas with the official Node driver.
 - **Database**: MongoDB Atlas, multi-tenant (every document scoped by `businessId`).
-- **Frontend**: static site (Cloudflare Pages) — see `frontend/`.
+- **Frontend**: static site — see `frontend/`.
 - **Auth**: business code + PIN login (matches the original CEO/Manager/Staff PIN UX), JWT bearer tokens.
 
-## 1. Create a MongoDB Atlas cluster
+> This project originally targeted Cloudflare Workers, but Cloudflare's
+> local dev/deploy tooling (`workerd`) doesn't run on Android/Termux, so
+> it moved to a plain Node.js server on Render — same code, same
+> MongoDB setup, just a different, Termux-friendly host.
 
-1. Sign up at https://www.mongodb.com/cloud/atlas (free tier is fine to start).
-2. Create a free **M0** cluster.
-3. Database Access → add a database user (username + password).
-4. Network Access → allow access from anywhere (`0.0.0.0/0`) since Workers don't have static IPs — Atlas Network Peering is not available on the free tier.
-5. Get your connection string: Clusters → Connect → Drivers → copy the `mongodb+srv://...` URI.
+## 1. MongoDB Atlas
 
-## 2. Set up the Worker locally
+Already covered if you followed the earlier setup — you should already have a
+connection string that looks like:
+```
+mongodb+srv://<user>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+```
+If not: sign up at mongodb.com/cloud/atlas, create a free M0 cluster, add a
+database user, and allow network access from anywhere (`0.0.0.0/0`).
+
+## 2. Test locally (optional)
 
 ```bash
-cd worker
+cd server
 npm install
-cp .dev.vars.example .dev.vars
-# edit .dev.vars: paste your MONGODB_URI and a random JWT_SECRET
+cp .env.example .env
+# edit .env: paste your MONGODB_URI and a random JWT_SECRET
 npm run dev
 ```
 
-Test it:
 ```bash
-curl http://localhost:8787/health
-curl -X POST http://localhost:8787/api/auth/register-business \
-  -H "Content-Type: application/json" \
-  -d '{"businessName":"My Shop","ownerName":"Mohammed","pin":"1234"}'
+curl http://localhost:3000/health
+curl http://localhost:3000/debug
 ```
 
-## 3. Deploy the Worker to Cloudflare
+## 3. Deploy to Render (no CLI needed — works fine from Termux)
 
-```bash
-cd worker
-npx wrangler login
-npx wrangler secret put MONGODB_URI
-npx wrangler secret put JWT_SECRET
-npm run deploy
-```
+1. Push this repo to GitHub (see below if not done yet).
+2. Go to https://dashboard.render.com → sign up (GitHub sign-in is fastest, no credit card required for the free tier).
+3. Click **New** → **Web Service**.
+4. Connect your GitHub account and select the `biztrack-pro` repo.
+5. Render should detect `render.yaml` automatically. If it asks you to configure manually instead:
+   - **Root Directory**: `server`
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm start`
+   - **Plan**: Free
+6. Under **Environment Variables**, add:
+   - `MONGODB_URI` → your connection string
+   - `JWT_SECRET` → any long random string
+7. Click **Create Web Service**. Render will build and deploy — takes a few minutes the first time.
+8. Once live, Render gives you a URL like `https://biztrack-pro-api.onrender.com`.
 
-Wrangler prints your live URL, e.g. `https://biztrack-pro-api.<you>.workers.dev`.
+**Note:** the free tier spins down after 15 minutes of no traffic and takes
+30-50 seconds to wake back up on the next request. That's normal — not a bug.
 
 ## 4. Push to GitHub
 
 ```bash
-git remote add origin https://github.com/mohammedsamini2001-art/biztrack-pro.git
 git add .
-git commit -m "BizTrack Pro: Cloudflare Workers + MongoDB backend"
-git branch -M main
-git push -u origin main
+git commit -m "Switch backend to Node/Render (Cloudflare Workers incompatible with Termux)"
+git push
 ```
 
-## 5. (Optional) Auto-deploy on every push
-
-The repo already includes `.github/workflows/deploy-worker.yml`. To activate it:
-
-1. GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
-   - `CLOUDFLARE_API_TOKEN` (Cloudflare dashboard → My Profile → API Tokens → "Edit Cloudflare Workers" template)
-   - `CLOUDFLARE_ACCOUNT_ID` (Cloudflare dashboard → right sidebar of any domain/Workers page)
-2. Every push to `main` that touches `worker/` will redeploy automatically.
-
-## 6. Deploy the frontend to Cloudflare Pages
+## 5. Verify it's live
 
 ```bash
-cd frontend
-npx wrangler pages deploy . --project-name=biztrack-pro
+curl https://YOUR-RENDER-URL.onrender.com/health
+curl https://YOUR-RENDER-URL.onrender.com/debug
+curl -X POST https://YOUR-RENDER-URL.onrender.com/api/auth/register-business \
+  -H "Content-Type: application/json" \
+  -d '{"businessName":"Test Shop","ownerName":"Mohammed","pin":"1234"}'
 ```
-
-Then point the frontend's `API_BASE_URL` (see `frontend/config.js`) at your deployed Worker URL from step 3.
 
 ## API overview
 
@@ -81,7 +83,8 @@ Then point the frontend's `API_BASE_URL` (see `frontend/config.js`) at your depl
 | `/api/auth/users?businessCode=XXXX` | GET | List login cards for the business |
 | `/api/auth/login` | POST | `{businessCode, userId, pin}` → token |
 | `/api/auth/users` | POST | CEO/Manager adds a Manager/Staff account |
-| `/api/products` `/api/sales` `/api/customers` `/api/suppliers` `/api/services` `/api/expenses` | GET/POST/PUT/DELETE | Standard CRUD, JWT required, auto-scoped to your business |
+| `/api/products` | GET/POST/PUT/DELETE | Products with variants, images, custom fields, SKU, expiry |
+| `/api/sales` `/api/customers` `/api/suppliers` `/api/services` `/api/expenses` | GET/POST/PUT/DELETE | Standard CRUD, JWT required, auto-scoped to your business |
 | `/api/dashboard/summary` | GET | Aggregated stats for the dashboard |
 
 All authenticated requests need `Authorization: Bearer <token>`.

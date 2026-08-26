@@ -20,6 +20,29 @@ app.use(
 app.get("/", (c) => c.json({ ok: true, service: "biztrack-pro-api" }));
 app.get("/health", (c) => c.json({ status: "healthy" }));
 
+// Temporary diagnostics endpoint — remove once MongoDB connection is confirmed working.
+// Reveals whether secrets are bound and, if a DB connection is attempted, the real error.
+app.get("/debug", async (c) => {
+  const hasMongoUri = !!c.env.MONGODB_URI;
+  const hasJwtSecret = !!c.env.JWT_SECRET;
+  const mongoUriPrefix = c.env.MONGODB_URI ? c.env.MONGODB_URI.slice(0, 20) : null;
+
+  let dbError: string | null = null;
+  let dbOk = false;
+  if (hasMongoUri) {
+    try {
+      const { getDb } = await import("./db");
+      const db = await getDb(c.env.MONGODB_URI);
+      await db.command({ ping: 1 });
+      dbOk = true;
+    } catch (e: any) {
+      dbError = e?.message || String(e);
+    }
+  }
+
+  return c.json({ hasMongoUri, hasJwtSecret, mongoUriPrefix, dbOk, dbError });
+});
+
 app.route("/api/auth", authRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 
@@ -36,7 +59,8 @@ app.route("/api/expenses", crudRouter("expenses"));
 app.notFound((c) => c.json({ error: "Not found" }, 404));
 app.onError((err, c) => {
   console.error(err);
-  return c.json({ error: "Internal server error" }, 500);
+  // TEMP: verbose error output for debugging deployment. Remove once MongoDB connection is confirmed working.
+  return c.json({ error: "Internal server error", debug: String(err && err.stack ? err.stack : err) }, 500);
 });
 
 export default app;

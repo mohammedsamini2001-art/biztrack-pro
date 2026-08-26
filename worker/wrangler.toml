@@ -1,4 +1,4 @@
-name = "biztrack-pro-api"
+name = "biztrack-pro"
 main = "src/index.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]

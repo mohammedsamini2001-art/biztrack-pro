@@ -169,7 +169,7 @@ const API_BASE_URL = "https://biztrack-pro-api.onrender.com";
 
 const Store = {
   token: null, user: null, businessCode: null, businessName: null,
-  products: [], sales: [], customers: [], summary: null, activeTab: "dashboard"
+  products: [], sales: [], customers: [], suppliers: [], summary: null, activeTab: "dashboard"
 };
 
 function toast(msg, type) {
@@ -289,7 +289,8 @@ const UI = {
     await this.go("dashboard");
   },
   renderNav() {
-    const tabs = [["dashboard","Dashboard"],["products","Products"],["sales","Sales"],["customers","Customers"]];
+    const tabs = [["dashboard","Dashboard"],["products","Products"],["purchases","Purchases"],
+      ["sales","Sales"],["customers","Customers"],["suppliers","Suppliers"]];
     document.getElementById("nav").innerHTML = tabs.map(function(t){
       return '<button class="' + (Store.activeTab===t[0]?'active':'') + '" onclick="UI.go(\'' + t[0] + '\')">' + t[1] + '</button>';
     }).join("");
@@ -302,8 +303,10 @@ const UI = {
     try {
       if (tab === "dashboard") await Pages.dashboard();
       else if (tab === "products") await Pages.products();
+      else if (tab === "purchases") await Pages.purchases();
       else if (tab === "sales") await Pages.sales();
       else if (tab === "customers") await Pages.customers();
+      else if (tab === "suppliers") await Pages.suppliers();
     } catch (e) {
       main.innerHTML = '<div class="empty">Couldn\'t load this page: ' + e.message + '</div>';
     }
@@ -389,6 +392,58 @@ const Pages = {
       '<input id="cu-name" placeholder="Full name"/><input id="cu-phone" placeholder="Phone"/>' +
       '</div><button class="btn btn-primary" onclick="Actions.addCustomer()">Add customer</button></div>' +
       '<div class="section"><h2>Customers (' + customers.length + ')</h2>' + rows + '</div>';
+  },
+
+  async suppliers() {
+    const suppliers = await api("/api/suppliers");
+    Store.suppliers = suppliers;
+    const rows = suppliers.length ? suppliers.map(function(s){
+      const cls = s.balance > 0 ? "low" : "ok";
+      const bal = s.balance > 0 ? (fmt(s.balance) + " owed") : "Settled";
+      return '<div class="row"><div><div class="name">' + s.name + '</div><div class="sub">' +
+        (s.phone || "No phone") + ' &middot; ' + (s.category || "General") + '</div></div>' +
+        '<span class="pill ' + cls + '">' + bal + '</span></div>';
+    }).join("") : '<div class="empty">No suppliers yet.</div>';
+
+    document.getElementById("main").innerHTML =
+      '<div class="section"><h2>Add supplier</h2><div class="form-inline">' +
+      '<input id="sp-name" placeholder="Supplier name"/><input id="sp-phone" placeholder="Phone"/>' +
+      '<input id="sp-category" placeholder="Category" class="full"/>' +
+      '</div><button class="btn btn-primary" onclick="Actions.addSupplier()">Add supplier</button></div>' +
+      '<div class="section"><h2>Suppliers (' + suppliers.length + ')</h2>' + rows + '</div>';
+  },
+
+  async purchases() {
+    const results = await Promise.all([api("/api/purchases"), api("/api/products"), api("/api/suppliers")]);
+    const purchases = results[0], products = results[1], suppliers = results[2];
+    Store.products = products; Store.suppliers = suppliers;
+    const supplierOptions = suppliers.map(function(s){
+      return '<option value="' + s._id + '">' + s.name + '</option>';
+    }).join("");
+    const productOptions = products.map(function(p){
+      return '<option value="' + p._id + '">' + p.name + ' (cost ' + fmt(p.costPrice) + ')</option>';
+    }).join("");
+    const rows = purchases.length ? purchases.map(function(p){
+      const cls = p.status === "received" ? "ok" : "low";
+      const itemsSummary = p.items.map(function(i){ return i.quantity + '&times; ' + i.productName; }).join(", ");
+      return '<div class="row"><div><div class="name">' + p.supplierName + '</div><div class="sub">' +
+        itemsSummary + ' &middot; ' + p.paymentMethod + '</div></div>' +
+        '<span class="pill ' + cls + '">' + fmt(p.totalCost) + ' &middot; ' + p.status + '</span></div>';
+    }).join("") : '<div class="empty">No purchases recorded yet.</div>';
+
+    document.getElementById("main").innerHTML =
+      '<div class="section"><h2>Record a purchase</h2>' +
+      (suppliers.length === 0 ? '<div class="empty">Add a supplier first, on the Suppliers tab.</div>' :
+      products.length === 0 ? '<div class="empty">Add a product first, on the Products tab.</div>' :
+      '<div class="form-inline">' +
+      '<select id="pu-supplier" class="full"><option value="">Select supplier</option>' + supplierOptions + '</select>' +
+      '<select id="pu-product"><option value="">Select product</option>' + productOptions + '</select>' +
+      '<input id="pu-qty" type="number" min="1" value="1" placeholder="Quantity"/>' +
+      '<input id="pu-cost" type="number" min="0" placeholder="Unit cost"/>' +
+      '<select id="pu-method"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Credit</option></select>' +
+      '</div><button class="btn btn-primary" onclick="Actions.addPurchase()">Record purchase (adds to stock)</button>') +
+      '</div>' +
+      '<div class="section"><h2>Recent purchases (' + purchases.length + ')</h2>' + rows + '</div>';
   }
 };
 
@@ -438,6 +493,39 @@ const Actions = {
       })});
       toast("Customer added");
       UI.go("customers");
+    } catch (e) { toast(e.message, "error"); }
+  },
+  async addSupplier() {
+    try {
+      await api("/api/suppliers", { method: "POST", body: JSON.stringify({
+        name: document.getElementById("sp-name").value.trim(),
+        phone: document.getElementById("sp-phone").value.trim(),
+        category: document.getElementById("sp-category").value.trim() || "General",
+        balance: 0
+      })});
+      toast("Supplier added");
+      UI.go("suppliers");
+    } catch (e) { toast(e.message, "error"); }
+  },
+  async addPurchase() {
+    const supplierId = document.getElementById("pu-supplier").value;
+    const productId = document.getElementById("pu-product").value;
+    const qty = Number(document.getElementById("pu-qty").value) || 0;
+    const unitCost = Number(document.getElementById("pu-cost").value) || 0;
+    const method = document.getElementById("pu-method").value;
+    const supplier = Store.suppliers.find(function(s){ return s._id === supplierId; });
+    const product = Store.products.find(function(p){ return p._id === productId; });
+    if (!supplier) { toast("Select a supplier", "error"); return; }
+    if (!product) { toast("Select a product", "error"); return; }
+    if (qty < 1 || unitCost < 0) { toast("Enter a valid quantity and cost", "error"); return; }
+    try {
+      await api("/api/purchases", { method: "POST", body: JSON.stringify({
+        supplierId: supplier._id, supplierName: supplier.name,
+        items: [{ productId: product._id, productName: product.name, quantity: qty, unitCost: unitCost }],
+        paymentMethod: method, status: "received"
+      })});
+      toast("Purchase recorded, stock updated");
+      UI.go("purchases");
     } catch (e) { toast(e.message, "error"); }
   }
 };

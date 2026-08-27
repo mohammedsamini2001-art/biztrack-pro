@@ -11,10 +11,10 @@ const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 // Node compatibility shim: on Cloudflare, c.env is auto-populated from
 // Worker bindings/secrets. On plain Node (Render, etc.) there's no such
 // thing, so expose process.env the same way every route already expects.
+// Always merge (rather than only-if-undefined) since some adapters give
+// an empty object instead of undefined, which would otherwise skip this.
 app.use("*", async (c, next) => {
-  if (!c.env) {
-    (c as any).env = process.env;
-  }
+  (c as any).env = { ...process.env, ...(c.env || {}) };
   await next();
 });
 

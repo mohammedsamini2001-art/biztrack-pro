@@ -273,12 +273,43 @@ function lookupProduct(){
     ? `<div class="insight">
         <b>${esc(p.name)}</b>
         <span class="mini">${esc(p.category)} · ${esc(p.sku||p.barcode||'')} · ${p.stock} in stock · ${money(p.sellPrice)}</span>
-        <button class="btn primary" style="margin-top:10px" onclick="scanAddToSale('${p._id?.$oid||p._id}')">Add to Sale</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn primary" onclick="scanAddToSale('${p._id?.$oid||p._id}')">Add to Sale</button>
+          <button class="btn" onclick="scanReceiveStock('${p._id?.$oid||p._id}')">Receive Stock</button>
+        </div>
       </div>`
     : `<div class="insight">
         <b>Not found</b>
         <span class="mini">No product in the current dataset matches that code.</span>
       </div>`;
+}
+
+async function scanReceiveStock(id){
+  if(!id){
+    toast("Product ID is missing.");
+    return;
+  }
+
+  const p=cache.products.find(
+    x=>String(x._id?.$oid||x._id)===String(id)
+  );
+
+  if(!p){
+    toast("Product not found.");
+    return;
+  }
+
+  if(!currentUser || !["CEO","Manager"].includes(currentUser.role)){
+    toast("Only CEO or Manager can receive stock.");
+    return;
+  }
+
+  try{
+    await openPurchase(id);
+    toast("Product ready for stock receiving.");
+  }catch(e){
+    toast("Could not open stock receiving: " + e.message);
+  }
 }
 
 async function scanAddToSale(id){
@@ -640,7 +671,13 @@ async function deleteSale(id){
 }
 
 async function deleteCrud(col,id){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can delete records.');return;}if(!confirm('Delete this record?'))return;try{await api('/api/'+col+'/'+id,{method:'DELETE'});cache[col]=cache[col].filter(x=>(x._id?.$oid||x._id)!==id);saveCache();renderAll();toast('Deleted.')}catch(e){toast(e.message)}}
-function openPurchase(){let p=cache.products[0],s=cache.suppliers[0];openModal('New purchase',`<form class="form" onsubmit="submitPurchase(event)"><div class="formgrid"><div class="field"><label>Supplier ID</label><input id="supid" class="input" value="${esc(s?._id?.$oid||s?._id||'')}" required></div><div class="field"><label>Supplier name</label><input id="supname" class="input" value="${esc(s?.name||'')}" required></div><div class="field"><label>Product ID</label><input id="ppid" class="input" value="${esc(p?._id?.$oid||p?._id||'')}" required></div><div class="field"><label>Product name</label><input id="ppname" class="input" value="${esc(p?.name||'')}" required></div><div class="field"><label>Quantity</label><input id="pqty" class="input" type="number" min="1" value="1" required></div><div class="field"><label>Unit cost</label><input id="pcu" class="input" type="number" step="0.01" value="0" required></div></div><div class="field"><label>Payment method</label><select id="ppm" class="input"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Credit</option></select></div><button class="btn primary">Save purchase</button></form>`)}
+function openPurchase(preselectedProductId=""){
+  let p=preselectedProductId
+    ? cache.products.find(x=>String(x._id?.$oid||x._id)===String(preselectedProductId))
+    : cache.products[0];
+  let s=cache.suppliers[0];
+
+  openModal('New purchase',`<form class="form" onsubmit="submitPurchase(event)"><div class="formgrid"><div class="field"><label>Supplier ID</label><input id="supid" class="input" value="${esc(s?._id?.$oid||s?._id||'')}" required></div><div class="field"><label>Supplier name</label><input id="supname" class="input" value="${esc(s?.name||'')}" required></div><div class="field"><label>Product ID</label><input id="ppid" class="input" value="${esc(p?._id?.$oid||p?._id||'')}" required></div><div class="field"><label>Product name</label><input id="ppname" class="input" value="${esc(p?.name||'')}" required></div><div class="field"><label>Quantity</label><input id="pqty" class="input" type="number" min="1" value="1" required></div><div class="field"><label>Unit cost</label><input id="pcu" class="input" type="number" step="0.01" value="0" required></div></div><div class="field"><label>Payment method</label><select id="ppm" class="input"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Credit</option></select></div><button class="btn primary">Save purchase</button></form>`)}
 async function submitPurchase(e){e.preventDefault();let x={supplierId:$("supid").value,supplierName:$("supname").value,items:[{productId:$("ppid").value,productName:$("ppname").value,quantity:Number($("pqty").value),unitCost:Number($("pcu").value)}],paymentMethod:$("ppm").value,status:'received'};try{let saved=await api('/api/purchases',{method:'POST',body:JSON.stringify(x)});cache.purchases.push(saved);saveCache();closeModal();syncAll();toast('Purchase saved and stock updated.')}catch(e){toast(e.message)}}
 function openAi(){openModal('✦ Hikma AI Insights',buildInsights().map(i=>`<div class="insight" style="margin-bottom:9px"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join(''))}
 function toast(t){let x=document.createElement('div');x.textContent=t;x.style.cssText='position:fixed;right:16px;bottom:16px;background:#0d192b;border:1px solid #2b415f;color:#fff;padding:11px 13px;border-radius:11px;z-index:300;box-shadow:0 16px 40px #0007';document.body.appendChild(x);setTimeout(()=>x.remove(),2500)}

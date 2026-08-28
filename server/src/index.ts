@@ -59,6 +59,7 @@ app.route("/api/customers", crudRouter("customers"));
 app.route("/api/suppliers", crudRouter("suppliers"));
 app.route("/api/services", crudRouter("services"));
 app.route("/api/expenses", crudRouter("expenses"));
+app.route("/api/employees", crudRouter("employees"));
 
 app.notFound((c) => c.json({ error: "Not found" }, 404));
 app.onError((err, c) => {

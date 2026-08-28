@@ -4,7 +4,14 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>BizTrack Pro — Business Management System</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#00e5b0"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -117,7 +124,18 @@ tbody tr:hover{background:var(--card2)}
 .mono{font-family:'JetBrains Mono',monospace}
 .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:13px}
 .alert-banner{background:rgba(255,202,40,.07);border:1px solid rgba(255,202,40,.25);border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:10px;margin-bottom:20px;font-size:13px;color:var(--warn)}
+.icon-btn{background:transparent;color:var(--muted);padding:8px;border-radius:8px;display:flex;align-items:center;border:1px solid var(--border)}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
 .err{color:var(--danger);font-size:13px;text-align:center;min-height:18px}
+.drop-zone{border:2px dashed var(--border2);border-radius:16px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s}
+.drop-zone:hover{border-color:var(--accent);background:rgba(0,229,176,.04)}
+.scan-row{display:grid;grid-template-columns:1fr 70px 90px 30px;gap:8px;align-items:center;margin-bottom:8px}
+.scan-row input{padding:8px 10px;font-size:13px}
+.chart-box{height:240px;position:relative}
+.tab-bar{display:flex;gap:6px;margin-bottom:16px}
+.tab-btn{padding:7px 16px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:600}
+.tab-btn.active{background:var(--accent);border-color:transparent;color:#000}
+body.light{--bg:#f0f4ff;--bg2:#e8eef8;--card:#ffffff;--card2:#f4f7ff;--border:#dce4f5;--border2:#c8d5ec;--text:#1a2035;--text2:#2d3a55;--muted:#7a8aaa;--muted2:#9aa5c0}
 
 #login-screen{position:fixed;inset:0;background:radial-gradient(ellipse at 30% 20%,#0d1f3c 0%,#07090f 60%);display:flex;align-items:center;justify-content:center;z-index:9998;padding:16px}
 .login-card{width:420px;max-width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:36px;backdrop-filter:blur(20px)}
@@ -253,12 +271,14 @@ tbody tr:hover{background:var(--card2)}
 
   <div id="main">
     <div id="topbar">
+      <button class="icon-btn" id="sidebar-toggle" onclick="App.toggleSidebar()"></button>
       <div class="tb-title">
         <h2 id="tb-title">Dashboard</h2>
         <p id="tb-date"></p>
       </div>
       <div class="tb-spacer"></div>
       <div class="flex gap10" id="tb-actions"></div>
+      <button class="icon-btn" onclick="App.toggleDark()" id="theme-toggle" title="Toggle theme"></button>
     </div>
     <div id="content"></div>
   </div>
@@ -281,13 +301,16 @@ const ICONS = {
   suppliers:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>',
   add:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
   close:'<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
-  alert:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  alert:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  menu:'<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
+  moon:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
+  sun:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>'
 };
 
 const Store = {
   token: null, user: null, businessCode: null, businessName: null,
-  products: [], sales: [], customers: [], suppliers: [], purchases: [],
-  activeTab: "dashboard", sidebarOpen: true
+  products: [], sales: [], customers: [], suppliers: [], purchases: [], employees: [],
+  activeTab: "dashboard", sidebarOpen: true, dark: true
 };
 
 function notify(msg, type) {
@@ -430,6 +453,7 @@ const UI = {
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("app").style.display = "flex";
     document.getElementById("tb-date").textContent = new Date().toLocaleDateString("en-KE",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+    App.updateThemeIcon();
     this.renderShell();
     if (freshCode) {
       notify("Business created!", "success");
@@ -445,7 +469,8 @@ const UI = {
     const tabs = [
       ["dashboard","Dashboard","dashboard"],["products","Products","inventory"],
       ["purchases","Purchases","purchases"],["sales","Sales","sales"],
-      ["customers","Customers","users"],["suppliers","Suppliers","suppliers"]
+      ["customers","Customers","users"],["suppliers","Suppliers","suppliers"],
+      ["employees","Employees","users"],["reports","Reports","purchases"]
     ];
     document.getElementById("sb-nav").innerHTML = tabs.map(function(t){
       return '<div class="sb-item" id="sbi-' + t[0] + '" onclick="UI.go(\'' + t[0] + '\');App.closeMobileSidebar()">' +
@@ -465,7 +490,7 @@ const UI = {
     Store.activeTab = tab;
     document.querySelectorAll(".sb-item").forEach(function(el){ el.classList.toggle("active", el.id === "sbi-"+tab); });
     document.querySelectorAll(".bnav-item").forEach(function(el){ el.classList.toggle("active", el.id === "bni-"+tab); });
-    const titles = { dashboard:"Dashboard", products:"Products", purchases:"Purchases", sales:"Sales", customers:"Customers", suppliers:"Suppliers" };
+    const titles = { dashboard:"Dashboard", products:"Products", purchases:"Purchases", sales:"Sales", customers:"Customers", suppliers:"Suppliers", employees:"Employees", reports:"Reports" };
     document.getElementById("tb-title").textContent = titles[tab] || tab;
     document.getElementById("content").innerHTML = '<div class="empty">Loading&hellip;</div>';
     try {
@@ -475,6 +500,8 @@ const UI = {
       else if (tab === "sales") await Pages.sales();
       else if (tab === "customers") await Pages.customers();
       else if (tab === "suppliers") await Pages.suppliers();
+      else if (tab === "employees") await Pages.employees();
+      else if (tab === "reports") await Pages.reports();
     } catch (e) {
       document.getElementById("content").innerHTML = '<div class="empty">Couldn\'t load: ' + e.message + '</div>';
     }
@@ -483,12 +510,28 @@ const UI = {
 
 const App = {
   openMobileSidebar() { document.getElementById("sidebar").classList.add("mobile-open"); document.getElementById("mobile-overlay").classList.add("visible"); },
-  closeMobileSidebar() { document.getElementById("sidebar").classList.remove("mobile-open"); document.getElementById("mobile-overlay").classList.remove("visible"); }
+  closeMobileSidebar() { document.getElementById("sidebar").classList.remove("mobile-open"); document.getElementById("mobile-overlay").classList.remove("visible"); },
+  toggleSidebar() {
+    Store.sidebarOpen = !Store.sidebarOpen;
+    const sb = document.getElementById("sidebar");
+    if (Store.sidebarOpen) { sb.style.width = ""; sb.style.minWidth = ""; }
+    else { sb.style.width = "0"; sb.style.minWidth = "0"; sb.style.overflow = "hidden"; }
+  },
+  toggleDark() {
+    Store.dark = !Store.dark;
+    document.body.classList.toggle("light", !Store.dark);
+    App.updateThemeIcon();
+  },
+  updateThemeIcon() {
+    document.getElementById("theme-toggle").innerHTML = Store.dark ? ICONS.sun : ICONS.moon;
+  }
 };
+document.getElementById("sidebar-toggle") && (document.getElementById("sidebar-toggle").innerHTML = ICONS.menu);
 
 const Pages = {
   async dashboard() {
-    const s = await api("/api/dashboard/summary");
+    const results = await Promise.all([api("/api/dashboard/summary"), api("/api/sales")]);
+    const s = results[0], allSales = results[1];
     const low = (s.lowStock && s.lowStock.length)
       ? '<div class="alert-banner">' + ICONS.alert + ' <strong>Low stock:</strong> ' + s.lowStock.map(function(p){return p.name;}).join(", ") + '</div>' : "";
     document.getElementById("content").innerHTML = low +
@@ -501,7 +544,10 @@ const Pages = {
       stat("Products", s.productCount, "#f472b6") +
       stat("Customers", s.customerCount, "#ffca28") +
       stat("Low stock", s.lowStock.length, "#ff5757") +
-      '</div>';
+      '</div>' +
+      '<div class="card" style="margin-top:16px"><h2 style="font-size:15px;font-weight:700;margin-bottom:14px">7-day revenue &amp; profit</h2>' +
+      '<div class="chart-box"><canvas id="ch-trend"></canvas></div></div>';
+    Charts.renderTrend(allSales);
   },
 
   async products() {
@@ -575,12 +621,105 @@ const Pages = {
     document.getElementById("content").innerHTML = suppliers.length ?
       '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Category</th><th>Balance</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
       : '<div class="empty">No suppliers yet. Tap "Add supplier" above.</div>';
+  },
+
+  async employees() {
+    const employees = await api("/api/employees");
+    Store.employees = employees;
+    document.getElementById("tb-actions").innerHTML = '<button class="tb-btn btn-accent" onclick="Modals.addEmployee()">' + ICONS.add + ' Add employee</button>';
+    const rows = employees.map(function(e){
+      return '<tr><td class="fw7">' + e.name + '</td><td class="c-muted">' + (e.role||"&mdash;") + '</td>' +
+        '<td class="c-muted">' + (e.department||"&mdash;") + '</td><td class="c-muted">' + (e.phone||"&mdash;") + '</td>' +
+        '<td><span class="badge ' + (e.status==="active"?"badge-green":"badge-red") + '">' + (e.status||"active") + '</span></td></tr>';
+    }).join("");
+    document.getElementById("content").innerHTML = employees.length ?
+      '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Role</th><th>Department</th><th>Phone</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty">No employees yet. Tap "Add employee" above.</div>';
+  },
+
+  async reports() {
+    const sales = await api("/api/sales");
+    Store.sales = sales;
+    document.getElementById("tb-actions").innerHTML =
+      '<button class="tb-btn btn-outline" onclick="Modals.scan()">Scan sales sheet</button>' +
+      '<button class="tb-btn btn-accent" onclick="Reports.exportPdf(Store.sales)">Export PDF ledger</button>';
+    const totalRev = sales.reduce(function(a,s){ return a + s.totalPrice; }, 0);
+    const totalProfit = sales.reduce(function(a,s){ return a + (s.profit||0); }, 0);
+    document.getElementById("content").innerHTML =
+      '<div class="grid g4">' +
+      stat("Total transactions", sales.length, "#00e5b0") +
+      stat("Total revenue", fmt(totalRev), "#3d8bff") +
+      stat("Total profit", fmt(totalProfit), "#4ade80") +
+      stat("Avg. sale", sales.length ? fmt(totalRev/sales.length) : fmt(0), "#c77dff") +
+      '</div>' +
+      '<div class="card" style="margin-top:16px"><h2 style="font-size:15px;font-weight:700;margin-bottom:8px">Export</h2>' +
+      '<p class="c-muted fs13">Download a full PDF ledger of every sale, or scan a handwritten/printed sales sheet to bulk-add sales.</p></div>';
   }
 };
 
 function stat(label, value, color) {
   return '<div class="card stat-card"><p class="stat-label">' + label + '</p><p class="stat-value" style="color:' + color + '">' + value + '</p></div>';
 }
+
+let _trendChart = null;
+const Charts = {
+  renderTrend(sales) {
+    const canvas = document.getElementById("ch-trend");
+    if (!canvas || typeof Chart === "undefined") return;
+    if (_trendChart) { _trendChart.destroy(); _trendChart = null; }
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split("T")[0]);
+    }
+    const revByDay = days.map(function(d){
+      return sales.filter(function(s){ return s.date === d; }).reduce(function(a,s){ return a + s.totalPrice; }, 0);
+    });
+    const profitByDay = days.map(function(d){
+      return sales.filter(function(s){ return s.date === d; }).reduce(function(a,s){ return a + (s.profit||0); }, 0);
+    });
+    const labels = days.map(function(d){ return d.slice(5); });
+    _trendChart = new Chart(canvas.getContext("2d"), {
+      type: "line",
+      data: { labels: labels, datasets: [
+        { label: "Revenue", data: revByDay, borderColor: "#00e5b0", backgroundColor: "rgba(0,229,176,.12)", fill: true, tension: .35 },
+        { label: "Profit", data: profitByDay, borderColor: "#3d8bff", backgroundColor: "rgba(61,139,255,.1)", fill: true, tension: .35 }
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: "#c5cfe0" } } },
+        scales: {
+          x: { grid: { color: "rgba(30,45,69,.7)" }, ticks: { color: "#6b7a99" } },
+          y: { grid: { color: "rgba(30,45,69,.7)" }, ticks: { color: "#6b7a99" } }
+        }
+      }
+    });
+  }
+};
+
+const Reports = {
+  exportPdf(sales) {
+    if (typeof window.jspdf === "undefined") { notify("PDF library didn't load, check your connection", "error"); return; }
+    const doc = new window.jspdf.jsPDF();
+    doc.setFontSize(16); doc.text("BizTrack Pro — Sales Ledger", 14, 16);
+    doc.setFontSize(10); doc.text(new Date().toLocaleDateString(), 14, 22);
+    const rows = sales.map(function(s){ return [s.date, s.productName, s.quantity, fmt(s.totalPrice), fmt(s.profit||0), s.paymentMethod]; });
+    doc.autoTable({
+      startY: 28,
+      head: [["Date","Product","Qty","Total","Profit","Method"]],
+      body: rows,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [0, 197, 149] }
+    });
+    const totalRev = sales.reduce(function(a,s){ return a + s.totalPrice; }, 0);
+    const totalProfit = sales.reduce(function(a,s){ return a + (s.profit||0); }, 0);
+    const y = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(11);
+    doc.text("Total revenue: " + fmt(totalRev), 14, y);
+    doc.text("Total profit: " + fmt(totalProfit), 14, y + 7);
+    doc.save("biztrack-ledger-" + new Date().toISOString().split("T")[0] + ".pdf");
+  }
+};
 
 const Modals = {
   addProduct() {
@@ -622,6 +761,24 @@ const Modals = {
       '<div class="form-row cols2">' + field("md-pqty","Quantity","number") + field("md-pcost","Unit cost","number") + '</div>' +
       '<div class="form-group"><label class="form-label">Payment</label><select id="md-pmethod" class="form-select"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Credit</option></select></div>' +
       '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addPurchase()">Record purchase</button></div></div>');
+  },
+  addEmployee() {
+    openModal('<div class="modal-box"><div class="modal-head"><h2>Add employee</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' + field("md-ename","Full name") +
+      '<div class="form-row cols2">' + field("md-erole","Role") + field("md-edept","Department") + '</div>' +
+      field("md-ephone","Phone") +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addEmployee()">Add employee</button></div></div>');
+  },
+  scan() {
+    openModal('<div class="modal-box" style="max-width:560px"><div class="modal-head"><h2>Scan sales sheet</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' +
+      '<p class="c-muted fs13 mb16">Take a photo of a handwritten or printed sales sheet. This reads the text on-device — nothing is uploaded anywhere.</p>' +
+      '<div class="drop-zone" id="scan-drop" onclick="document.getElementById(\'scan-file\').click()">' +
+      '<p class="fw7">Tap to choose or take a photo</p><p class="c-muted fs12 mt8">JPG or PNG</p></div>' +
+      '<input type="file" id="scan-file" accept="image/*" capture="environment" style="display:none" onchange="Scan.handleFile(this.files[0])"/>' +
+      '<div id="scan-progress" class="hidden mt16"><p class="c-muted fs13" id="scan-progress-text">Reading image&hellip;</p></div>' +
+      '<div id="scan-results" class="hidden mt16"></div>' +
+      '</div></div>');
   }
 };
 
@@ -684,11 +841,111 @@ const Actions = {
       })});
       closeModal(); notify("Purchase recorded, stock updated"); UI.go("purchases");
     } catch (e) { notify(e.message, "error"); }
+  },
+  async addEmployee() {
+    try {
+      await api("/api/employees", { method: "POST", body: JSON.stringify({
+        name: val("md-ename"), role: val("md-erole"), department: val("md-edept"),
+        phone: val("md-ephone"), status: "active"
+      })});
+      closeModal(); notify("Employee added"); UI.go("employees");
+    } catch (e) { notify(e.message, "error"); }
+  }
+};
+
+const Scan = {
+  async handleFile(file) {
+    if (!file) return;
+    if (typeof Tesseract === "undefined") { notify("Scan library didn't load, check your connection", "error"); return; }
+    document.getElementById("scan-drop").classList.add("hidden");
+    document.getElementById("scan-progress").classList.remove("hidden");
+    try {
+      const result = await Tesseract.recognize(file, "eng", {
+        logger: function (m) {
+          if (m.status === "recognizing text") {
+            document.getElementById("scan-progress-text").textContent = "Reading image\u2026 " + Math.round(m.progress * 100) + "%";
+          }
+        }
+      });
+      this.showResults(this.parseLines(result.data.text));
+    } catch (e) {
+      notify("Couldn't read that image: " + e.message, "error");
+      document.getElementById("scan-drop").classList.remove("hidden");
+      document.getElementById("scan-progress").classList.add("hidden");
+    }
+  },
+  // Heuristic parse: looks for lines like "Product name  qty  price"
+  // (qty and price as trailing numbers). Not perfect — always shown as
+  // an editable table before anything is saved.
+  parseLines(text) {
+    const lines = text.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+    const rows = [];
+    lines.forEach(function(line){
+      const nums = line.match(/\d+(\.\d+)?/g);
+      if (!nums || nums.length < 1) return;
+      const namepart = line.replace(/[\d.]+/g, "").trim();
+      if (!namepart || namepart.length < 2) return;
+      const qty = nums.length >= 2 ? parseFloat(nums[nums.length - 2]) : 1;
+      const price = parseFloat(nums[nums.length - 1]);
+      if (!price || price <= 0) return;
+      rows.push({ name: namepart.slice(0, 40), qty: qty || 1, price: price });
+    });
+    return rows;
+  },
+  showResults(rows) {
+    document.getElementById("scan-progress").classList.add("hidden");
+    const box = document.getElementById("scan-results");
+    box.classList.remove("hidden");
+    if (!rows.length) {
+      box.innerHTML = '<div class="empty">Couldn\'t find any product/quantity/price lines. Try a clearer photo.</div>' +
+        '<button class="tb-btn btn-outline" style="width:100%;justify-content:center;margin-top:10px" onclick="Modals.scan()">Try again</button>';
+      return;
+    }
+    box.innerHTML = '<p class="fw7 mb16">Found ' + rows.length + ' line(s) &mdash; review before saving:</p>' +
+      '<div id="scan-rows">' + rows.map(function(r, i){
+        return '<div class="scan-row">' +
+          '<input value="' + r.name.replace(/"/g,"") + '" id="scan-name-' + i + '"/>' +
+          '<input type="number" value="' + r.qty + '" id="scan-qty-' + i + '"/>' +
+          '<input type="number" value="' + r.price + '" id="scan-price-' + i + '"/>' +
+          '<button class="modal-close" onclick="this.closest(\'.scan-row\').remove()">&times;</button></div>';
+      }).join("") + '</div>' +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center;margin-top:10px" onclick="Scan.saveAll(' + rows.length + ')">Save as sales</button>';
+  },
+  async saveAll(count) {
+    const rowsEl = document.querySelectorAll("#scan-rows .scan-row");
+    let saved = 0, failed = 0;
+    for (let i = 0; i < rowsEl.length; i++) {
+      const nameEl = document.getElementById("scan-name-" + i);
+      const qtyEl = document.getElementById("scan-qty-" + i);
+      const priceEl = document.getElementById("scan-price-" + i);
+      if (!nameEl || !qtyEl || !priceEl) continue;
+      const name = nameEl.value.trim();
+      const qty = Number(qtyEl.value) || 1;
+      const price = Number(priceEl.value) || 0;
+      if (!name || price <= 0) { failed++; continue; }
+      try {
+        await api("/api/sales", { method: "POST", body: JSON.stringify({
+          productName: name, category: "Scanned", quantity: qty, unitPrice: price,
+          totalPrice: qty * price, costTotal: 0, profit: qty * price,
+          paymentMethod: "Cash", date: new Date().toISOString().split("T")[0]
+        })});
+        saved++;
+      } catch (e) { failed++; }
+    }
+    closeModal();
+    notify(saved + " sale(s) saved" + (failed ? ", " + failed + " skipped" : ""), failed ? "error" : "success");
+    if (Store.activeTab === "sales" || Store.activeTab === "reports") UI.go(Store.activeTab);
   }
 };
 
 function val(id) { return (document.getElementById(id).value || "").trim(); }
 function numVal(id) { return Number(document.getElementById(id).value) || 0; }
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
 </script>
 </body>
 </html>

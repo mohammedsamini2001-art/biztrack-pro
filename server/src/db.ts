@@ -6,6 +6,20 @@ import { MongoClient, Db } from "mongodb";
 let cached: { client: MongoClient; db: Db } | null = null;
 let connecting: Promise<{ client: MongoClient; db: Db }> | null = null;
 
+export async function getMongoClient(uri: string): Promise<MongoClient> {
+  if (cached) return cached.client;
+  if (connecting) {
+    const connection = await connecting;
+    return connection.client;
+  }
+
+  const db = await getDb(uri);
+  void db;
+
+  if (!cached) throw new Error("MongoDB client is not initialized");
+  return (cached as { client: MongoClient; db: Db }).client;
+}
+
 export async function getDb(uri: string, dbName = "hikma_business_os"): Promise<Db> {
   if (cached) return cached.db;
   if (connecting) return (await connecting).db;

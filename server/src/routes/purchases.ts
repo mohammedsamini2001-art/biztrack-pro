@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { ObjectId } from "mongodb";
-import { getDb } from "../db";
+import { getDb, getMongoClient } from "../db";
 import { requireAuth, requireRole } from "../auth";
 import type { Env, AuthUser } from "../types";
 
@@ -112,29 +112,132 @@ purchasesRoutes.post("/", requireRole("CEO", "Manager"), async (c) => {
 purchasesRoutes.post("/:id/receive", requireRole("CEO", "Manager"), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const db = await getDb(c.env.MONGODB_URI);
-  const purchase = await db.collection("purchases").findOne({ _id: new ObjectId(id), businessId: user.businessId });
-  if (!purchase) return c.json({ error: "Not found" }, 404);
-  if (purchase.status === "received") return c.json({ error: "Already received" }, 400);
 
-  for (const item of purchase.items as PurchaseItem[]) {
-    await db.collection("products").updateOne(
-      { _id: new ObjectId(item.productId), businessId: user.businessId },
-      { $inc: { stock: item.quantity } }
-    );
+  if (!id || !ObjectId.isValid(id)) {
+    return c.json({ error: "Invalid purchase ID" }, 400);
   }
-  if (purchase.paymentMethod === "Credit") {
-    await db.collection("suppliers").updateOne(
-      { _id: new ObjectId(purchase.supplierId), businessId: user.businessId },
-      { $inc: { balance: purchase.totalCost } }
-    );
+
+  const client = await getMongoClient(c.env.MONGODB_URI);
+  const db = client.db("hikma_business_os");
+  const session = client.startSession();
+
+  try {
+    let updated;
+
+    await session.withTransaction(async () => {
+      const purchase = await db.collection("purchases").findOne(
+        {
+          _id: new ObjectId(id),
+          businessId: user.businessId,
+        },
+        { session }
+      );
+
+      if (!purchase) {
+        throw new Error("PURCHASE_NOT_FOUND");
+      }
+
+      if (purchase.status === "received") {
+        throw new Error("PURCHASE_ALREADY_RECEIVED");
+      }
+
+      if (purchase.status !== "pending") {
+        throw new Error("PURCHASE_NOT_PENDING");
+      }
+
+      for (const item of purchase.items as PurchaseItem[]) {
+        const result = await db.collection("products").updateOne(
+          {
+            _id: new ObjectId(item.productId),
+            businessId: user.businessId,
+          },
+          {
+            $inc: { stock: item.quantity },
+          },
+          { session }
+        );
+
+        if (result.matchedCount !== 1) {
+          throw new Error("PRODUCT_NOT_FOUND");
+        }
+      }
+
+      if (purchase.paymentMethod === "Credit") {
+        const supplierResult = await db.collection("suppliers").updateOne(
+          {
+            _id: new ObjectId(purchase.supplierId),
+            businessId: user.businessId,
+          },
+          {
+            $inc: { balance: purchase.totalCost },
+          },
+          { session }
+        );
+
+        if (supplierResult.matchedCount !== 1) {
+          throw new Error("SUPPLIER_NOT_FOUND");
+        }
+      }
+
+      updated = await db.collection("purchases").findOneAndUpdate(
+        {
+          _id: new ObjectId(id),
+          businessId: user.businessId,
+          status: "pending",
+        },
+        {
+          $set: {
+            status: "received",
+            receivedAt: new Date().toISOString(),
+          },
+        },
+        {
+          session,
+          returnDocument: "after",
+        }
+      );
+
+      if (!updated) {
+        throw new Error("PURCHASE_STATE_CHANGED");
+      }
+    });
+
+    return c.json(updated);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message === "PURCHASE_NOT_FOUND") {
+      return c.json({ error: "Not found" }, 404);
+    }
+
+    if (message === "PURCHASE_ALREADY_RECEIVED") {
+      return c.json({ error: "Already received" }, 400);
+    }
+
+    if (message === "PURCHASE_NOT_PENDING") {
+      return c.json({ error: "Purchase is not pending" }, 400);
+    }
+
+    if (message === "PRODUCT_NOT_FOUND") {
+      return c.json({ error: "One or more products were not found" }, 400);
+    }
+
+    if (message === "SUPPLIER_NOT_FOUND") {
+      return c.json({ error: "Supplier not found" }, 400);
+    }
+
+    if (message === "PURCHASE_STATE_CHANGED") {
+      return c.json(
+        { error: "Purchase state changed before it could be received" },
+        409
+      );
+    }
+
+    console.error("Purchase receive transaction failed:", error);
+    return c.json({ error: "Failed to receive purchase" }, 500);
+  } finally {
+    await session.endSession();
   }
-  const updated = await db.collection("purchases").findOneAndUpdate(
-    { _id: new ObjectId(id) },
-    { $set: { status: "received", receivedAt: new Date().toISOString() } },
-    { returnDocument: "after" }
-  );
-  return c.json(updated);
 });
 
 purchasesRoutes.delete("/:id", requireRole("CEO", "Manager"), async (c) => {

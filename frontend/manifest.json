@@ -1,1 +1,10 @@
-{"name":"Hikma Business OS","short_name":"Hikma","start_url":"./","display":"standalone","background_color":"#07101d","theme_color":"#0b1220","description":"Offline-first business management system","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml"}]}
+{
+  "name":"Hikma Business OS",
+  "short_name":"Hikma",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#07111f",
+  "theme_color":"#07111f",
+  "description":"Business management, POS, inventory, CRM and analytics",
+  "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml"}]
+}

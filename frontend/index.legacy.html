@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hikma Business OS — Business Management System</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#00e5b0"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg2:#0c1018;--card:#111827;--card2:#162035;
+  --border:#1e2d45;--border2:#243550;
+  --text:#e8edf8;--text2:#c5cfe0;--muted:#6b7a99;--muted2:#4a5678;
+  --accent:#00e5b0;--accent2:#3d8bff;--accent3:#c77dff;
+  --danger:#ff5757;--warn:#ffca28;--success:#4ade80;
+  --grad1:linear-gradient(135deg,#00e5b0,#3d8bff);
+  --grad2:linear-gradient(135deg,#3d8bff,#c77dff);
+  --shadow:0 8px 32px rgba(0,0,0,0.5);
+  --radius:14px;--radius2:10px;--radius3:8px;
+  font-family:'Sora',sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+button{cursor:pointer;font-family:'Sora',sans-serif;transition:all .18s;border:none}
+input,select,textarea{font-family:'Sora',sans-serif;outline:none;transition:border .18s}
+input:focus,select:focus{border-color:var(--accent)!important}
+a{color:inherit;text-decoration:none}
+
+#app{display:flex;height:100vh;width:100vw;overflow:hidden}
+#sidebar{width:240px;min-width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:10}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{height:64px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:14px;flex-shrink:0}
+#content{flex:1;overflow:auto;padding:24px}
+
+.sb-logo{padding:18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;min-height:64px}
+.sb-logo-icon{width:36px;height:36px;border-radius:10px;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sb-logo-text{font-weight:800;font-size:16px;white-space:nowrap}
+.sb-logo-text span{color:var(--accent)}
+.sb-logo-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.sb-nav{flex:1;padding:12px 8px;overflow-y:auto}
+.sb-item{display:flex;align-items:center;gap:12px;padding:10px 10px;border-radius:var(--radius2);margin-bottom:3px;cursor:pointer;color:var(--muted);border-left:3px solid transparent;transition:all .18s;white-space:nowrap}
+.sb-item:hover{background:rgba(255,255,255,.04);color:var(--text2)}
+.sb-item.active{background:rgba(0,229,176,.08);border-left-color:var(--accent);color:var(--accent)}
+.sb-item svg{flex-shrink:0}
+.sb-label{font-size:13.5px;font-weight:500}
+.sb-user{padding:14px 12px;border-top:1px solid var(--border)}
+.sb-user-inner{display:flex;align-items:center;gap:10px}
+.sb-avatar{width:36px;height:36px;border-radius:10px;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex-shrink:0}
+.sb-user-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-role{font-size:11px;color:var(--accent);margin-top:1px}
+.sb-logout{margin-top:10px;width:100%;padding:8px;border-radius:8px;background:rgba(255,87,87,.1);border:1px solid rgba(255,87,87,.2);color:var(--danger);font-size:12px;font-weight:600}
+.sb-logout:hover{background:rgba(255,87,87,.2)}
+
+.tb-toggle{background:transparent;color:var(--muted);padding:6px;border-radius:8px;display:flex;align-items:center}
+.tb-toggle:hover{background:var(--card2)}
+.tb-title h2{font-size:18px;font-weight:700;letter-spacing:-.02em}
+.tb-title p{font-size:11px;color:var(--muted);margin-top:1px}
+.tb-spacer{flex:1}
+.tb-btn{display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--radius2);font-size:13px;font-weight:600}
+.tb-btn:hover{transform:translateY(-1px)}
+.btn-accent{background:linear-gradient(135deg,#00e5b0,#00c495);color:#000}
+.btn-outline{background:transparent;border:1px solid var(--border)!important;color:var(--muted)}
+.btn-outline:hover{border-color:var(--accent)!important;color:var(--accent)}
+.btn-danger{background:rgba(255,87,87,.12);border:1px solid rgba(255,87,87,.25)!important;color:var(--danger)}
+
+#notif{position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.notif-item{padding:13px 20px;border-radius:12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;animation:slideUp .3s ease;box-shadow:0 8px 30px rgba(0,0,0,.5);pointer-events:all}
+.notif-success{background:#1a3a2a;border:1px solid rgba(74,222,128,.3);color:var(--success)}
+.notif-error{background:#3a1a1a;border:1px solid rgba(255,87,87,.3);color:var(--danger)}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
+.stat-card{position:relative;overflow:hidden;transition:transform .2s}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.stat-value{font-size:24px;font-weight:800;letter-spacing:-.03em;margin:6px 0 4px;font-family:'JetBrains Mono',monospace}
+.stat-sub{font-size:12px;color:var(--muted)}
+
+.table-wrap{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--card2)}
+th{padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+td{padding:10px 16px;border-top:1px solid var(--border);white-space:nowrap}
+tbody tr:hover{background:var(--card2)}
+
+.form-group{margin-bottom:16px}
+.form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block;margin-bottom:7px}
+.form-input,.form-select{width:100%;padding:11px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--text);font-size:14px}
+.form-row{display:grid;gap:14px}
+.form-row.cols2{grid-template-columns:1fr 1fr}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:var(--card);border:1px solid var(--border2);border-radius:20px;max-height:90vh;overflow-y:auto;width:100%;max-width:480px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:24px 26px 0}
+.modal-head h2{font-size:18px;font-weight:800}
+.modal-body{padding:20px 26px 26px}
+.modal-close{background:transparent;color:var(--muted);padding:6px;border-radius:8px}
+.modal-close:hover{background:var(--card2);color:var(--text)}
+
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.badge-blue{background:rgba(61,139,255,.12);color:var(--accent2)}
+.badge-green{background:rgba(74,222,128,.1);color:var(--success)}
+.badge-red{background:rgba(255,87,87,.1);color:var(--danger)}
+.badge-yellow{background:rgba(255,202,40,.1);color:var(--warn)}
+
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr)}}
+.flex{display:flex;align-items:center}
+.gap8{gap:8px}.gap10{gap:10px}.gap12{gap:12px}
+.mt8{margin-top:8px}.mt16{margin-top:16px}.mb16{margin-bottom:16px}.mb20{margin-bottom:20px}
+.fw7{font-weight:700}
+.fs12{font-size:12px}.fs13{font-size:13px}
+.c-accent{color:var(--accent)}.c-danger{color:var(--danger)}.c-muted{color:var(--muted)}
+.mono{font-family:'JetBrains Mono',monospace}
+.empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:13px}
+.alert-banner{background:rgba(255,202,40,.07);border:1px solid rgba(255,202,40,.25);border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:10px;margin-bottom:20px;font-size:13px;color:var(--warn)}
+.icon-btn{background:transparent;color:var(--muted);padding:8px;border-radius:8px;display:flex;align-items:center;border:1px solid var(--border)}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.err{color:var(--danger);font-size:13px;text-align:center;min-height:18px}
+.drop-zone{border:2px dashed var(--border2);border-radius:16px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s}
+.drop-zone:hover{border-color:var(--accent);background:rgba(0,229,176,.04)}
+.scan-row{display:grid;grid-template-columns:1fr 70px 90px 30px;gap:8px;align-items:center;margin-bottom:8px}
+.scan-row input{padding:8px 10px;font-size:13px}
+.chart-box{height:240px;position:relative}
+.tab-bar{display:flex;gap:6px;margin-bottom:16px}
+.tab-btn{padding:7px 16px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:600}
+.tab-btn.active{background:var(--accent);border-color:transparent;color:#000}
+body.light{--bg:#f0f4ff;--bg2:#e8eef8;--card:#ffffff;--card2:#f4f7ff;--border:#dce4f5;--border2:#c8d5ec;--text:#1a2035;--text2:#2d3a55;--muted:#7a8aaa;--muted2:#9aa5c0}
+
+#login-screen{position:fixed;inset:0;background:radial-gradient(ellipse at 30% 20%,#0d1f3c 0%,#07090f 60%);display:flex;align-items:center;justify-content:center;z-index:9998;padding:16px}
+.login-card{width:420px;max-width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:36px;backdrop-filter:blur(20px)}
+.login-logo{text-align:center;margin-bottom:26px}
+.login-logo-icon{width:64px;height:64px;border-radius:18px;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 12px}
+.login-logo h1{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.03em}
+.login-logo h1 span{color:var(--accent)}
+.login-logo p{font-size:13px;color:var(--muted);margin-top:4px}
+.login-tabs{display:flex;gap:6px;margin-bottom:22px;background:rgba(255,255,255,.03);border-radius:10px;padding:4px}
+.login-tabs button{flex:1;padding:9px;border-radius:8px;background:transparent;color:var(--muted);font-weight:600;font-size:13px}
+.login-tabs button.active{background:var(--accent);color:#04231e}
+.field-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:center;margin-bottom:12px}
+.login-input{width:100%;padding:13px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#fff;font-size:15px;margin-bottom:14px;text-align:center;letter-spacing:.08em}
+.user-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;max-height:220px;overflow-y:auto}
+.user-card{padding:10px 12px;border-radius:12px;border:2px solid rgba(255,255,255,.08);cursor:pointer;display:flex;align-items:center;gap:10px}
+.user-card:hover{border-color:rgba(0,229,176,.3)}
+.user-card.selected{border-color:var(--accent);background:rgba(0,229,176,.08)}
+.user-card-av{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex-shrink:0}
+.user-card.selected .user-card-av{background:var(--grad1)}
+.user-card-name{font-size:13px;font-weight:600;color:var(--muted)}
+.user-card.selected .user-card-name{color:var(--accent)}
+.user-card-role{font-size:11px;color:var(--muted2)}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin:0 0 20px}
+.pin-dot{width:48px;height:54px;border-radius:12px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--accent)}
+.pin-dot.filled{border-color:var(--accent);background:rgba(0,229,176,.08)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+.key{padding:15px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#fff;font-size:18px;font-weight:700}
+.key:hover{background:rgba(0,229,176,.12);border-color:rgba(0,229,176,.3)}
+.key:active{transform:scale(.95)}
+.key.empty{background:transparent;border-color:transparent}
+.link-btn{background:none;color:var(--accent);font-size:13px;text-decoration:underline;padding:4px;display:block;margin:0 auto}
+.hidden{display:none!important}
+.code-reveal{background:rgba(0,229,176,.08);border:1px dashed var(--accent);border-radius:12px;padding:14px;text-align:center;margin-bottom:16px}
+.code-reveal .code{font-size:22px;font-weight:800;letter-spacing:.15em;color:var(--accent)}
+.code-reveal .hint{font-size:11px;color:var(--muted);margin-top:4px}
+
+#mobile-topbar{display:none;height:56px;background:var(--card);border-bottom:1px solid var(--border);align-items:center;padding:0 16px;gap:12px;flex-shrink:0;position:sticky;top:0;z-index:20}
+#mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:18}
+.mob-logo{font-size:15px;font-weight:800;flex:1}.mob-logo span{color:var(--accent)}
+.mob-hamburger{background:transparent;color:var(--text);padding:6px;border-radius:8px;display:flex}
+#bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);z-index:20;padding:0 4px 4px}
+.bnav-inner{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+.bnav-item{display:flex;flex-direction:column;align-items:center;padding:8px 4px 6px;border-radius:8px;color:var(--muted);gap:3px;background:transparent}
+.bnav-label{font-size:9px;font-weight:600;text-transform:uppercase}
+.bnav-item.active{color:var(--accent);background:rgba(0,229,176,.08)}
+
+@media(max-width:768px){
+  html,body{overflow:auto}
+  #app{flex-direction:column;height:auto;min-height:100vh}
+  #sidebar{display:none!important}
+  #sidebar.mobile-open{display:flex!important;position:fixed;top:0;left:0;bottom:0;width:260px;z-index:19}
+  #main{width:100%;flex:1}
+  #topbar{display:none!important}
+  #mobile-topbar{display:flex!important}
+  #bottom-nav{display:block!important}
+  #mobile-overlay.visible{display:block!important}
+  #content{padding:14px;padding-bottom:80px}
+  .g4{grid-template-columns:repeat(2,1fr)!important}
+  .stat-value{font-size:19px!important}
+  .form-row.cols2{grid-template-columns:1fr!important}
+  #notif{bottom:80px;right:12px;left:12px}
+}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">📊</div>
+      <h1>Hikma <span>Pro</span></h1>
+      <p>Business Management &amp; Sales System</p>
+    </div>
+
+    <div class="login-tabs">
+      <button id="tab-login" class="active" onclick="UI.showAuthTab('login')">Log in</button>
+      <button id="tab-register" onclick="UI.showAuthTab('register')">New business</button>
+    </div>
+
+    <div id="login-panel">
+      <div id="login-step-code">
+        <p class="field-label">Business code</p>
+        <input id="li-code" class="login-input" placeholder="e.g. BWIBOC" maxlength="6" style="text-transform:uppercase"/>
+        <button class="tb-btn btn-accent" style="width:100%;justify-content:center;padding:13px" onclick="Auth.lookupBusiness()">Continue</button>
+      </div>
+      <div id="login-step-user" class="hidden">
+        <p class="field-label" id="li-biz-name">Select account</p>
+        <div class="user-cards" id="li-users"></div>
+        <p class="field-label">Enter PIN</p>
+        <div class="pin-dots">
+          <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
+          <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
+        </div>
+        <div class="keypad" id="keypad"></div>
+        <button class="link-btn" onclick="UI.backToCode()">&larr; Different business code</button>
+      </div>
+      <div class="err" id="login-err"></div>
+    </div>
+
+    <div id="register-panel" class="hidden">
+      <p class="field-label">Business name</p>
+      <input id="rg-biz" class="login-input" style="text-transform:none;letter-spacing:normal" placeholder="e.g. Mombasa Fresh Mart"/>
+      <p class="field-label">Your name</p>
+      <input id="rg-name" class="login-input" style="text-transform:none;letter-spacing:normal" placeholder="e.g. Mohammed"/>
+      <p class="field-label">Choose a 4-digit PIN</p>
+      <input id="rg-pin" type="password" class="login-input" maxlength="4" placeholder="e.g. 1234"/>
+      <button class="tb-btn btn-accent" style="width:100%;justify-content:center;padding:13px" onclick="Auth.register()">Create business</button>
+      <div class="err" id="register-err"></div>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div id="mobile-overlay" onclick="App.closeMobileSidebar()"></div>
+  <div id="mobile-topbar">
+    <button class="mob-hamburger" onclick="App.openMobileSidebar()">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="mob-logo">Hikma <span>Pro</span></div>
+  </div>
+
+  <div id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">📊</div>
+      <div>
+        <div class="sb-logo-text">Hikma <span>Pro</span></div>
+        <div class="sb-logo-sub">Business Manager</div>
+      </div>
+    </div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-user" id="sb-user"></div>
+  </div>
+
+  <div id="main">
+    <div id="topbar">
+      <button class="icon-btn" id="sidebar-toggle" onclick="App.toggleSidebar()"></button>
+      <div class="tb-title">
+        <h2 id="tb-title">Dashboard</h2>
+        <p id="tb-date"></p>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="flex gap10" id="tb-actions"></div>
+      <button class="icon-btn" onclick="App.toggleDark()" id="theme-toggle" title="Toggle theme"></button>
+    </div>
+    <div id="content"></div>
+  </div>
+
+  <div id="bottom-nav"><div class="bnav-inner" id="bottom-nav-inner"></div></div>
+</div>
+
+<div id="modal-container"></div>
+<div id="notif"></div>
+
+<script>
+const API_BASE_URL = "https://hikma-business-os-api.onrender.com";
+
+const ICONS = {
+  dashboard:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  inventory:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>',
+  purchases:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>',
+  sales:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
+  users:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
+  suppliers:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>',
+  add:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+  close:'<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  alert:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  menu:'<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
+  moon:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
+  sun:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>'
+};
+
+const Store = {
+  token: null, user: null, businessCode: null, businessName: null,
+  products: [], sales: [], customers: [], suppliers: [], purchases: [], employees: [],
+  activeTab: "dashboard", sidebarOpen: true, dark: true
+};
+
+function notify(msg, type) {
+  const el = document.createElement("div");
+  el.className = "notif-item notif-" + (type || "success");
+  el.innerHTML = "<span>" + (type === "error" ? "&#9888;" : "&#10003;") + "</span>" + msg;
+  document.getElementById("notif").appendChild(el);
+  setTimeout(function(){
+    el.style.opacity = "0"; el.style.transform = "translateY(10px)"; el.style.transition = "all .3s";
+    setTimeout(function(){ el.remove(); }, 300);
+  }, 3200);
+}
+
+async function api(path, opts) {
+  opts = opts || {};
+  const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+  if (Store.token) headers["Authorization"] = "Bearer " + Store.token;
+  const res = await fetch(API_BASE_URL + path, Object.assign({}, opts, { headers: headers }));
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error((data && data.error) || ("Request failed (" + res.status + ")"));
+  return data;
+}
+
+function fmt(n) { return "KES " + Number(n || 0).toLocaleString(); }
+function openModal(html) {
+  document.getElementById("modal-container").innerHTML =
+    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' + html + '</div>';
+}
+function closeModal() { document.getElementById("modal-container").innerHTML = ""; }
+
+const Auth = {
+  _selectedUserId: null, _pin: "",
+  async lookupBusiness() {
+    const code = document.getElementById("li-code").value.trim().toUpperCase();
+    const errEl = document.getElementById("login-err");
+    errEl.textContent = "";
+    if (!code) { errEl.textContent = "Enter a business code"; return; }
+    try {
+      const data = await api("/api/auth/users?businessCode=" + encodeURIComponent(code));
+      Store.businessCode = code;
+      Store.businessName = data.business.name;
+      document.getElementById("li-biz-name").textContent = "Logging in to " + data.business.name;
+      const list = document.getElementById("li-users");
+      list.innerHTML = data.users.map(function(u){
+        return '<div class="user-card" data-id="' + u._id + '" onclick="Auth.selectUser(\'' + u._id + '\')">' +
+          '<div class="user-card-av">' + (u.name || "?").slice(0,2).toUpperCase() + '</div>' +
+          '<div><div class="user-card-name">' + u.name + '</div><div class="user-card-role">' + u.role + '</div></div></div>';
+      }).join("");
+      document.getElementById("login-step-code").classList.add("hidden");
+      document.getElementById("login-step-user").classList.remove("hidden");
+      this.buildKeypad();
+    } catch (e) { errEl.textContent = e.message; }
+  },
+  buildKeypad() {
+    const keys = [1,2,3,4,5,6,7,8,9,"",0,"\u232B"];
+    document.getElementById("keypad").innerHTML = keys.map(function(k){
+      return '<button class="key' + (k===""?" empty":"") + '" onclick="Auth.pressKey(\'' + k + '\')" ' + (k===""?"disabled":"") + '>' + k + '</button>';
+    }).join("");
+    this._pin = "";
+    this.updatePinDots();
+  },
+  selectUser(id) {
+    this._selectedUserId = id;
+    document.querySelectorAll("#li-users .user-card").forEach(function(r){
+      r.classList.toggle("selected", r.dataset.id === id);
+    });
+    document.getElementById("login-err").textContent = "";
+  },
+  pressKey(k) {
+    if (k === "\u232B") { this._pin = this._pin.slice(0,-1); this.updatePinDots(); return; }
+    if (k === "" || this._pin.length >= 4) return;
+    this._pin += k;
+    this.updatePinDots();
+    if (this._pin.length === 4) this.login();
+  },
+  updatePinDots() {
+    for (let i = 0; i < 4; i++) {
+      const d = document.getElementById("dot" + i);
+      if (i < this._pin.length) { d.classList.add("filled"); d.textContent = "\u25CF"; }
+      else { d.classList.remove("filled"); d.textContent = ""; }
+    }
+  },
+  async login() {
+    const errEl = document.getElementById("login-err");
+    errEl.textContent = "";
+    if (!this._selectedUserId) { errEl.textContent = "Select who's logging in"; this._pin=""; this.updatePinDots(); return; }
+    try {
+      const data = await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ businessCode: Store.businessCode, userId: this._selectedUserId, pin: this._pin })
+      });
+      Store.token = data.token;
+      Store.user = data.user;
+      UI.enterApp();
+    } catch (e) {
+      errEl.textContent = e.message;
+      this._pin = ""; this.updatePinDots();
+    }
+  },
+  async register() {
+    const errEl = document.getElementById("register-err");
+    errEl.textContent = "";
+    const businessName = document.getElementById("rg-biz").value.trim();
+    const ownerName = document.getElementById("rg-name").value.trim();
+    const pin = document.getElementById("rg-pin").value.trim();
+    if (!businessName || !ownerName) { errEl.textContent = "Fill in business and your name"; return; }
+    if (!/^\d{4}$/.test(pin)) { errEl.textContent = "PIN must be exactly 4 digits"; return; }
+    try {
+      const data = await api("/api/auth/register-business", {
+        method: "POST",
+        body: JSON.stringify({ businessName: businessName, ownerName: ownerName, pin: pin })
+      });
+      Store.token = data.token;
+      Store.user = data.user;
+      Store.businessCode = data.businessCode;
+      Store.businessName = businessName;
+      UI.enterApp(data.businessCode);
+    } catch (e) { errEl.textContent = e.message; }
+  },
+  logout() {
+    Store.token = null; Store.user = null; Store.businessCode = null;
+    document.getElementById("app").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+  }
+};
+
+const UI = {
+  showAuthTab(tab) {
+    document.getElementById("tab-login").classList.toggle("active", tab === "login");
+    document.getElementById("tab-register").classList.toggle("active", tab === "register");
+    document.getElementById("login-panel").classList.toggle("hidden", tab !== "login");
+    document.getElementById("register-panel").classList.toggle("hidden", tab !== "register");
+  },
+  backToCode() {
+    document.getElementById("login-step-user").classList.add("hidden");
+    document.getElementById("login-step-code").classList.remove("hidden");
+  },
+  async enterApp(freshCode) {
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+    document.getElementById("tb-date").textContent = new Date().toLocaleDateString("en-KE",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+    App.updateThemeIcon();
+    this.renderShell();
+    if (freshCode) {
+      notify("Business created!", "success");
+      setTimeout(function(){
+        openModal('<div class="modal-box"><div class="modal-head"><h2>Your business code</h2></div><div class="modal-body">' +
+          '<div class="code-reveal"><div class="code">' + freshCode + '</div><div class="hint">Share this with your staff so they can log in</div></div>' +
+          '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="closeModal()">Got it</button></div></div>');
+      }, 400);
+    }
+    await this.go("dashboard");
+  },
+  renderShell() {
+    const tabs = [
+      ["dashboard","Dashboard","dashboard"],["products","Products","inventory"],
+      ["purchases","Purchases","purchases"],["sales","Sales","sales"],
+      ["customers","Customers","users"],["suppliers","Suppliers","suppliers"],
+      ["employees","Employees","users"],["reports","Reports","purchases"]
+    ];
+    document.getElementById("sb-nav").innerHTML = tabs.map(function(t){
+      return '<div class="sb-item" id="sbi-' + t[0] + '" onclick="UI.go(\'' + t[0] + '\');App.closeMobileSidebar()">' +
+        ICONS[t[2]] + '<span class="sb-label">' + t[1] + '</span></div>';
+    }).join("");
+    document.getElementById("bottom-nav-inner").innerHTML = tabs.map(function(t){
+      return '<button class="bnav-item" id="bni-' + t[0] + '" onclick="UI.go(\'' + t[0] + '\')">' +
+        ICONS[t[2]] + '<span class="bnav-label">' + t[1] + '</span></button>';
+    }).join("");
+    const u = Store.user;
+    document.getElementById("sb-user").innerHTML =
+      '<div class="sb-user-inner"><div class="sb-avatar">' + (u.name||"?").slice(0,2).toUpperCase() + '</div>' +
+      '<div><div class="sb-user-name">' + u.name + '</div><div class="sb-user-role">' + u.role + '</div></div></div>' +
+      '<button class="sb-logout" onclick="Auth.logout()">Log out</button>';
+  },
+  async go(tab) {
+    Store.activeTab = tab;
+    document.querySelectorAll(".sb-item").forEach(function(el){ el.classList.toggle("active", el.id === "sbi-"+tab); });
+    document.querySelectorAll(".bnav-item").forEach(function(el){ el.classList.toggle("active", el.id === "bni-"+tab); });
+    const titles = { dashboard:"Dashboard", products:"Products", purchases:"Purchases", sales:"Sales", customers:"Customers", suppliers:"Suppliers", employees:"Employees", reports:"Reports" };
+    document.getElementById("tb-title").textContent = titles[tab] || tab;
+    document.getElementById("content").innerHTML = '<div class="empty">Loading&hellip;</div>';
+    try {
+      if (tab === "dashboard") await Pages.dashboard();
+      else if (tab === "products") await Pages.products();
+      else if (tab === "purchases") await Pages.purchases();
+      else if (tab === "sales") await Pages.sales();
+      else if (tab === "customers") await Pages.customers();
+      else if (tab === "suppliers") await Pages.suppliers();
+      else if (tab === "employees") await Pages.employees();
+      else if (tab === "reports") await Pages.reports();
+    } catch (e) {
+      document.getElementById("content").innerHTML = '<div class="empty">Couldn\'t load: ' + e.message + '</div>';
+    }
+  }
+};
+
+const App = {
+  openMobileSidebar() { document.getElementById("sidebar").classList.add("mobile-open"); document.getElementById("mobile-overlay").classList.add("visible"); },
+  closeMobileSidebar() { document.getElementById("sidebar").classList.remove("mobile-open"); document.getElementById("mobile-overlay").classList.remove("visible"); },
+  toggleSidebar() {
+    Store.sidebarOpen = !Store.sidebarOpen;
+    const sb = document.getElementById("sidebar");
+    if (Store.sidebarOpen) { sb.style.width = ""; sb.style.minWidth = ""; }
+    else { sb.style.width = "0"; sb.style.minWidth = "0"; sb.style.overflow = "hidden"; }
+  },
+  toggleDark() {
+    Store.dark = !Store.dark;
+    document.body.classList.toggle("light", !Store.dark);
+    App.updateThemeIcon();
+  },
+  updateThemeIcon() {
+    document.getElementById("theme-toggle").innerHTML = Store.dark ? ICONS.sun : ICONS.moon;
+  }
+};
+document.getElementById("sidebar-toggle") && (document.getElementById("sidebar-toggle").innerHTML = ICONS.menu);
+
+const Pages = {
+  async dashboard() {
+    const results = await Promise.all([api("/api/dashboard/summary"), api("/api/sales")]);
+    const s = results[0], allSales = results[1];
+    const low = (s.lowStock && s.lowStock.length)
+      ? '<div class="alert-banner">' + ICONS.alert + ' <strong>Low stock:</strong> ' + s.lowStock.map(function(p){return p.name;}).join(", ") + '</div>' : "";
+    document.getElementById("content").innerHTML = low +
+      '<div class="grid g4">' +
+      stat("Today's revenue", fmt(s.todayRevenue), "#00e5b0") +
+      stat("Today's profit", fmt(s.todayProfit), "#3d8bff") +
+      stat("Monthly revenue", fmt(s.monthRevenue), "#c77dff") +
+      stat("Net income", fmt(s.netIncome), "#4ade80") +
+      stat("Stock value", fmt(s.stockValue), "#00b4d8") +
+      stat("Products", s.productCount, "#f472b6") +
+      stat("Customers", s.customerCount, "#ffca28") +
+      stat("Low stock", s.lowStock.length, "#ff5757") +
+      '</div>' +
+      '<div class="card" style="margin-top:16px"><h2 style="font-size:15px;font-weight:700;margin-bottom:14px">7-day revenue &amp; profit</h2>' +
+      '<div class="chart-box"><canvas id="ch-trend"></canvas></div></div>';
+    Charts.renderTrend(allSales);
+  },
+
+  async products() {
+    const products = await api("/api/products");
+    Store.products = products;
+    document.getElementById("tb-actions").innerHTML = '<button class="tb-btn btn-accent" onclick="Modals.addProduct()">' + ICONS.add + ' Add product</button>';
+    const rows = products.length ? products.map(function(p){
+      const low = p.stock <= p.reorderLevel;
+      return '<tr><td class="fw7">' + p.name + '</td><td><span class="badge badge-blue">' + p.category + '</span></td>' +
+        '<td class="mono" style="color:' + (low ? "var(--danger)" : "var(--success)") + '">' + p.stock + '</td>' +
+        '<td class="c-muted">' + fmt(p.costPrice) + '</td><td class="fw7">' + fmt(p.sellPrice) + '</td>' +
+        '<td>' + (low ? '<span class="badge badge-red">Low</span>' : '<span class="badge badge-green">OK</span>') + '</td></tr>';
+    }).join("") : "";
+    document.getElementById("content").innerHTML = products.length ?
+      '<div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Cost</th><th>Sell</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty">No products yet. Tap "Add product" above.</div>';
+  },
+
+  async purchases() {
+    const results = await Promise.all([api("/api/purchases"), api("/api/products"), api("/api/suppliers")]);
+    const purchases = results[0]; Store.products = results[1]; Store.suppliers = results[2];
+    document.getElementById("tb-actions").innerHTML = '<button class="tb-btn btn-accent" onclick="Modals.addPurchase()">' + ICONS.add + ' Record purchase</button>';
+    const rows = purchases.length ? purchases.map(function(p){
+      const items = p.items.map(function(i){ return i.quantity + '&times;' + i.productName; }).join(", ");
+      return '<tr><td class="fw7">' + p.supplierName + '</td><td class="c-muted">' + items + '</td>' +
+        '<td>' + fmt(p.totalCost) + '</td><td><span class="badge badge-blue">' + p.paymentMethod + '</span></td>' +
+        '<td><span class="badge ' + (p.status==="received"?"badge-green":"badge-yellow") + '">' + p.status + '</span></td></tr>';
+    }).join("") : "";
+    document.getElementById("content").innerHTML = purchases.length ?
+      '<div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Items</th><th>Total</th><th>Method</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty">No purchases yet. Tap "Record purchase" above.</div>';
+  },
+
+  async sales() {
+    const results = await Promise.all([api("/api/sales"), api("/api/products")]);
+    const sales = results[0]; Store.products = results[1];
+    document.getElementById("tb-actions").innerHTML = '<button class="tb-btn btn-accent" onclick="Modals.addSale()">' + ICONS.add + ' Record sale</button>';
+    const rows = sales.slice(0,50).map(function(s){
+      return '<tr><td class="fw7">' + s.productName + '</td><td>' + s.quantity + '</td><td class="fw7 c-accent">' + fmt(s.totalPrice) + '</td>' +
+        '<td><span class="badge badge-blue">' + s.paymentMethod + '</span></td><td class="c-muted">' + s.date + '</td></tr>';
+    }).join("");
+    document.getElementById("content").innerHTML = sales.length ?
+      '<div class="table-wrap"><table><thead><tr><th>Product</th><th>Qty</th><th>Total</th><th>Method</th><th>Date</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty">No sales yet. Tap "Record sale" above.</div>';
+  },
+
+  async customers() {
+    const customers = await api("/api/customers");
+    Store.customers = customers;
+    document.getElementById("tb-actions").innerHTML = '<button class="tb-btn btn-accent" onclick="Modals.addCustomer()">' + ICONS.add + ' Add customer</button>';
+    const rows = customers.map(function(c){
+      const bal = c.balance > 0 ? fmt(c.balance) + ' owed' : 'Settled';
+      return '<tr><td class="fw7">' + c.name + '</td><td class="c-muted">' + (c.phone||"&mdash;") + '</td>' +
+        '<td><span class="badge ' + (c.balance>0?"badge-red":"badge-green") + '">' + bal + '</span></td></tr>';
+    }).join("");
+    document.getElementById("content").innerHTML = customers.length ?
+      '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Balance</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty">No customers yet. Tap "Add customer" above.</div>';
+  },
+
+  async suppliers() {
+    const suppliers = await api("/api/suppliers");
+    Store.suppliers = suppliers;
+    document.getElementById("tb-actions").innerHTML = '<button class="tb-btn btn-accent" onclick="Modals.addSupplier()">' + ICONS.add + ' Add supplier</button>';
+    const rows = suppliers.map(function(s){
+      const bal = s.balance > 0 ? fmt(s.balance) + ' owed' : 'Settled';
+      return '<tr><td class="fw7">' + s.name + '</td><td class="c-muted">' + (s.phone||"&mdash;") + '</td>' +
+        '<td><span class="badge badge-blue">' + (s.category||"General") + '</span></td>' +
+        '<td><span class="badge ' + (s.balance>0?"badge-red":"badge-green") + '">' + bal + '</span></td></tr>';
+    }).join("");
+    document.getElementById("content").innerHTML = suppliers.length ?
+      '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Category</th><th>Balance</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty">No suppliers yet. Tap "Add supplier" above.</div>';
+  },
+
+  async employees() {
+    const employees = await api("/api/employees");
+    Store.employees = employees;
+    document.getElementById("tb-actions").innerHTML = '<button class="tb-btn btn-accent" onclick="Modals.addEmployee()">' + ICONS.add + ' Add employee</button>';
+    const rows = employees.map(function(e){
+      return '<tr><td class="fw7">' + e.name + '</td><td class="c-muted">' + (e.role||"&mdash;") + '</td>' +
+        '<td class="c-muted">' + (e.department||"&mdash;") + '</td><td class="c-muted">' + (e.phone||"&mdash;") + '</td>' +
+        '<td><span class="badge ' + (e.status==="active"?"badge-green":"badge-red") + '">' + (e.status||"active") + '</span></td></tr>';
+    }).join("");
+    document.getElementById("content").innerHTML = employees.length ?
+      '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Role</th><th>Department</th><th>Phone</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty">No employees yet. Tap "Add employee" above.</div>';
+  },
+
+  async reports() {
+    const sales = await api("/api/sales");
+    Store.sales = sales;
+    document.getElementById("tb-actions").innerHTML =
+      '<button class="tb-btn btn-outline" onclick="Modals.scan()">Scan sales sheet</button>' +
+      '<button class="tb-btn btn-accent" onclick="Reports.exportPdf(Store.sales)">Export PDF ledger</button>';
+    const totalRev = sales.reduce(function(a,s){ return a + s.totalPrice; }, 0);
+    const totalProfit = sales.reduce(function(a,s){ return a + (s.profit||0); }, 0);
+    document.getElementById("content").innerHTML =
+      '<div class="grid g4">' +
+      stat("Total transactions", sales.length, "#00e5b0") +
+      stat("Total revenue", fmt(totalRev), "#3d8bff") +
+      stat("Total profit", fmt(totalProfit), "#4ade80") +
+      stat("Avg. sale", sales.length ? fmt(totalRev/sales.length) : fmt(0), "#c77dff") +
+      '</div>' +
+      '<div class="card" style="margin-top:16px"><h2 style="font-size:15px;font-weight:700;margin-bottom:8px">Export</h2>' +
+      '<p class="c-muted fs13">Download a full PDF ledger of every sale, or scan a handwritten/printed sales sheet to bulk-add sales.</p></div>';
+  }
+};
+
+function stat(label, value, color) {
+  return '<div class="card stat-card"><p class="stat-label">' + label + '</p><p class="stat-value" style="color:' + color + '">' + value + '</p></div>';
+}
+
+let _trendChart = null;
+const Charts = {
+  renderTrend(sales) {
+    const canvas = document.getElementById("ch-trend");
+    if (!canvas || typeof Chart === "undefined") return;
+    if (_trendChart) { _trendChart.destroy(); _trendChart = null; }
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split("T")[0]);
+    }
+    const revByDay = days.map(function(d){
+      return sales.filter(function(s){ return s.date === d; }).reduce(function(a,s){ return a + s.totalPrice; }, 0);
+    });
+    const profitByDay = days.map(function(d){
+      return sales.filter(function(s){ return s.date === d; }).reduce(function(a,s){ return a + (s.profit||0); }, 0);
+    });
+    const labels = days.map(function(d){ return d.slice(5); });
+    _trendChart = new Chart(canvas.getContext("2d"), {
+      type: "line",
+      data: { labels: labels, datasets: [
+        { label: "Revenue", data: revByDay, borderColor: "#00e5b0", backgroundColor: "rgba(0,229,176,.12)", fill: true, tension: .35 },
+        { label: "Profit", data: profitByDay, borderColor: "#3d8bff", backgroundColor: "rgba(61,139,255,.1)", fill: true, tension: .35 }
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: "#c5cfe0" } } },
+        scales: {
+          x: { grid: { color: "rgba(30,45,69,.7)" }, ticks: { color: "#6b7a99" } },
+          y: { grid: { color: "rgba(30,45,69,.7)" }, ticks: { color: "#6b7a99" } }
+        }
+      }
+    });
+  }
+};
+
+const Reports = {
+  exportPdf(sales) {
+    if (typeof window.jspdf === "undefined") { notify("PDF library didn't load, check your connection", "error"); return; }
+    const doc = new window.jspdf.jsPDF();
+    doc.setFontSize(16); doc.text("Hikma Business OS — Sales Ledger", 14, 16);
+    doc.setFontSize(10); doc.text(new Date().toLocaleDateString(), 14, 22);
+    const rows = sales.map(function(s){ return [s.date, s.productName, s.quantity, fmt(s.totalPrice), fmt(s.profit||0), s.paymentMethod]; });
+    doc.autoTable({
+      startY: 28,
+      head: [["Date","Product","Qty","Total","Profit","Method"]],
+      body: rows,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [0, 197, 149] }
+    });
+    const totalRev = sales.reduce(function(a,s){ return a + s.totalPrice; }, 0);
+    const totalProfit = sales.reduce(function(a,s){ return a + (s.profit||0); }, 0);
+    const y = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(11);
+    doc.text("Total revenue: " + fmt(totalRev), 14, y);
+    doc.text("Total profit: " + fmt(totalProfit), 14, y + 7);
+    doc.save("hikma-ledger-" + new Date().toISOString().split("T")[0] + ".pdf");
+  }
+};
+
+const Modals = {
+  addProduct() {
+    openModal('<div class="modal-box"><div class="modal-head"><h2>Add product</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' +
+      field("md-name","Name") + field("md-category","Category") + field("md-unit","Unit (e.g. bottle, kg)") +
+      '<div class="form-row cols2">' + field("md-stock","Stock","number") + field("md-reorder","Reorder level","number") + '</div>' +
+      '<div class="form-row cols2">' + field("md-cost","Cost price","number") + field("md-sell","Sell price","number") + '</div>' +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addProduct()">Add product</button></div></div>');
+  },
+  addSale() {
+    const opts = Store.products.map(function(p){ return '<option value="' + p._id + '">' + p.name + ' (' + p.stock + ' left)</option>'; }).join("");
+    openModal('<div class="modal-box"><div class="modal-head"><h2>Record sale</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' +
+      '<div class="form-group"><label class="form-label">Product</label><select id="md-product" class="form-select"><option value="">Select</option>' + opts + '</select></div>' +
+      '<div class="form-row cols2">' + field("md-qty","Quantity","number") +
+      '<div class="form-group"><label class="form-label">Payment</label><select id="md-method" class="form-select"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option></select></div></div>' +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addSale()">Record sale</button></div></div>');
+  },
+  addCustomer() {
+    openModal('<div class="modal-box"><div class="modal-head"><h2>Add customer</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' + field("md-cname","Full name") + field("md-cphone","Phone") +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addCustomer()">Add customer</button></div></div>');
+  },
+  addSupplier() {
+    openModal('<div class="modal-box"><div class="modal-head"><h2>Add supplier</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' + field("md-sname","Supplier name") + field("md-sphone","Phone") + field("md-scategory","Category") +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addSupplier()">Add supplier</button></div></div>');
+  },
+  addPurchase() {
+    if (!Store.suppliers.length) { notify("Add a supplier first", "error"); return; }
+    if (!Store.products.length) { notify("Add a product first", "error"); return; }
+    const supOpts = Store.suppliers.map(function(s){ return '<option value="' + s._id + '">' + s.name + '</option>'; }).join("");
+    const prodOpts = Store.products.map(function(p){ return '<option value="' + p._id + '">' + p.name + '</option>'; }).join("");
+    openModal('<div class="modal-box"><div class="modal-head"><h2>Record purchase</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' +
+      '<div class="form-group"><label class="form-label">Supplier</label><select id="md-supplier" class="form-select"><option value="">Select</option>' + supOpts + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Product</label><select id="md-pproduct" class="form-select"><option value="">Select</option>' + prodOpts + '</select></div>' +
+      '<div class="form-row cols2">' + field("md-pqty","Quantity","number") + field("md-pcost","Unit cost","number") + '</div>' +
+      '<div class="form-group"><label class="form-label">Payment</label><select id="md-pmethod" class="form-select"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Credit</option></select></div>' +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addPurchase()">Record purchase</button></div></div>');
+  },
+  addEmployee() {
+    openModal('<div class="modal-box"><div class="modal-head"><h2>Add employee</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' + field("md-ename","Full name") +
+      '<div class="form-row cols2">' + field("md-erole","Role") + field("md-edept","Department") + '</div>' +
+      field("md-ephone","Phone") +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center" onclick="Actions.addEmployee()">Add employee</button></div></div>');
+  },
+  scan() {
+    openModal('<div class="modal-box" style="max-width:560px"><div class="modal-head"><h2>Scan sales sheet</h2><button class="modal-close" onclick="closeModal()">' + ICONS.close + '</button></div>' +
+      '<div class="modal-body">' +
+      '<p class="c-muted fs13 mb16">Take a photo of a handwritten or printed sales sheet. This reads the text on-device — nothing is uploaded anywhere.</p>' +
+      '<div class="drop-zone" id="scan-drop" onclick="document.getElementById(\'scan-file\').click()">' +
+      '<p class="fw7">Tap to choose or take a photo</p><p class="c-muted fs12 mt8">JPG or PNG</p></div>' +
+      '<input type="file" id="scan-file" accept="image/*" capture="environment" style="display:none" onchange="Scan.handleFile(this.files[0])"/>' +
+      '<div id="scan-progress" class="hidden mt16"><p class="c-muted fs13" id="scan-progress-text">Reading image&hellip;</p></div>' +
+      '<div id="scan-results" class="hidden mt16"></div>' +
+      '</div></div>');
+  }
+};
+
+function field(id, label, type) {
+  return '<div class="form-group"><label class="form-label">' + label + '</label><input id="' + id + '" type="' + (type||"text") + '" class="form-input"/></div>';
+}
+
+const Actions = {
+  async addProduct() {
+    try {
+      await api("/api/products", { method: "POST", body: JSON.stringify({
+        name: val("md-name"), category: val("md-category") || "General", unit: val("md-unit") || "piece",
+        stock: numVal("md-stock"), reorderLevel: numVal("md-reorder") || 10,
+        costPrice: numVal("md-cost"), sellPrice: numVal("md-sell")
+      })});
+      closeModal(); notify("Product added"); UI.go("products");
+    } catch (e) { notify(e.message, "error"); }
+  },
+  async addSale() {
+    const productId = val("md-product");
+    const qty = numVal("md-qty");
+    const product = Store.products.find(function(p){ return p._id === productId; });
+    if (!product) { notify("Select a product", "error"); return; }
+    if (qty < 1 || qty > product.stock) { notify("Invalid quantity", "error"); return; }
+    try {
+      await api("/api/sales", { method: "POST", body: JSON.stringify({
+        productId: product._id, productName: product.name, category: product.category,
+        quantity: qty, unitPrice: product.sellPrice, totalPrice: product.sellPrice * qty,
+        costTotal: product.costPrice * qty, profit: (product.sellPrice - product.costPrice) * qty,
+        paymentMethod: val("md-method"), date: new Date().toISOString().split("T")[0]
+      })});
+      await api("/api/products/" + product._id, { method: "PUT", body: JSON.stringify({ stock: product.stock - qty }) });
+      closeModal(); notify("Sale recorded"); UI.go("sales");
+    } catch (e) { notify(e.message, "error"); }
+  },
+  async addCustomer() {
+    try {
+      await api("/api/customers", { method: "POST", body: JSON.stringify({ name: val("md-cname"), phone: val("md-cphone"), loyalty: 0, balance: 0 })});
+      closeModal(); notify("Customer added"); UI.go("customers");
+    } catch (e) { notify(e.message, "error"); }
+  },
+  async addSupplier() {
+    try {
+      await api("/api/suppliers", { method: "POST", body: JSON.stringify({ name: val("md-sname"), phone: val("md-sphone"), category: val("md-scategory") || "General", balance: 0 })});
+      closeModal(); notify("Supplier added"); UI.go("suppliers");
+    } catch (e) { notify(e.message, "error"); }
+  },
+  async addPurchase() {
+    const supplierId = val("md-supplier"), productId = val("md-pproduct");
+    const qty = numVal("md-pqty"), cost = numVal("md-pcost");
+    const supplier = Store.suppliers.find(function(s){ return s._id === supplierId; });
+    const product = Store.products.find(function(p){ return p._id === productId; });
+    if (!supplier || !product) { notify("Select supplier and product", "error"); return; }
+    if (qty < 1 || cost < 0) { notify("Enter valid quantity and cost", "error"); return; }
+    try {
+      await api("/api/purchases", { method: "POST", body: JSON.stringify({
+        supplierId: supplier._id, supplierName: supplier.name,
+        items: [{ productId: product._id, productName: product.name, quantity: qty, unitCost: cost }],
+        paymentMethod: val("md-pmethod"), status: "received"
+      })});
+      closeModal(); notify("Purchase recorded, stock updated"); UI.go("purchases");
+    } catch (e) { notify(e.message, "error"); }
+  },
+  async addEmployee() {
+    try {
+      await api("/api/employees", { method: "POST", body: JSON.stringify({
+        name: val("md-ename"), role: val("md-erole"), department: val("md-edept"),
+        phone: val("md-ephone"), status: "active"
+      })});
+      closeModal(); notify("Employee added"); UI.go("employees");
+    } catch (e) { notify(e.message, "error"); }
+  }
+};
+
+const Scan = {
+  async handleFile(file) {
+    if (!file) return;
+    if (typeof Tesseract === "undefined") { notify("Scan library didn't load, check your connection", "error"); return; }
+    document.getElementById("scan-drop").classList.add("hidden");
+    document.getElementById("scan-progress").classList.remove("hidden");
+    try {
+      const result = await Tesseract.recognize(file, "eng", {
+        logger: function (m) {
+          if (m.status === "recognizing text") {
+            document.getElementById("scan-progress-text").textContent = "Reading image\u2026 " + Math.round(m.progress * 100) + "%";
+          }
+        }
+      });
+      this.showResults(this.parseLines(result.data.text));
+    } catch (e) {
+      notify("Couldn't read that image: " + e.message, "error");
+      document.getElementById("scan-drop").classList.remove("hidden");
+      document.getElementById("scan-progress").classList.add("hidden");
+    }
+  },
+  // Heuristic parse: looks for lines like "Product name  qty  price"
+  // (qty and price as trailing numbers). Not perfect — always shown as
+  // an editable table before anything is saved.
+  parseLines(text) {
+    const lines = text.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+    const rows = [];
+    lines.forEach(function(line){
+      const nums = line.match(/\d+(\.\d+)?/g);
+      if (!nums || nums.length < 1) return;
+      const namepart = line.replace(/[\d.]+/g, "").trim();
+      if (!namepart || namepart.length < 2) return;
+      const qty = nums.length >= 2 ? parseFloat(nums[nums.length - 2]) : 1;
+      const price = parseFloat(nums[nums.length - 1]);
+      if (!price || price <= 0) return;
+      rows.push({ name: namepart.slice(0, 40), qty: qty || 1, price: price });
+    });
+    return rows;
+  },
+  showResults(rows) {
+    document.getElementById("scan-progress").classList.add("hidden");
+    const box = document.getElementById("scan-results");
+    box.classList.remove("hidden");
+    if (!rows.length) {
+      box.innerHTML = '<div class="empty">Couldn\'t find any product/quantity/price lines. Try a clearer photo.</div>' +
+        '<button class="tb-btn btn-outline" style="width:100%;justify-content:center;margin-top:10px" onclick="Modals.scan()">Try again</button>';
+      return;
+    }
+    box.innerHTML = '<p class="fw7 mb16">Found ' + rows.length + ' line(s) &mdash; review before saving:</p>' +
+      '<div id="scan-rows">' + rows.map(function(r, i){
+        return '<div class="scan-row">' +
+          '<input value="' + r.name.replace(/"/g,"") + '" id="scan-name-' + i + '"/>' +
+          '<input type="number" value="' + r.qty + '" id="scan-qty-' + i + '"/>' +
+          '<input type="number" value="' + r.price + '" id="scan-price-' + i + '"/>' +
+          '<button class="modal-close" onclick="this.closest(\'.scan-row\').remove()">&times;</button></div>';
+      }).join("") + '</div>' +
+      '<button class="tb-btn btn-accent" style="width:100%;justify-content:center;margin-top:10px" onclick="Scan.saveAll(' + rows.length + ')">Save as sales</button>';
+  },
+  async saveAll(count) {
+    const rowsEl = document.querySelectorAll("#scan-rows .scan-row");
+    let saved = 0, failed = 0;
+    for (let i = 0; i < rowsEl.length; i++) {
+      const nameEl = document.getElementById("scan-name-" + i);
+      const qtyEl = document.getElementById("scan-qty-" + i);
+      const priceEl = document.getElementById("scan-price-" + i);
+      if (!nameEl || !qtyEl || !priceEl) continue;
+      const name = nameEl.value.trim();
+      const qty = Number(qtyEl.value) || 1;
+      const price = Number(priceEl.value) || 0;
+      if (!name || price <= 0) { failed++; continue; }
+      try {
+        await api("/api/sales", { method: "POST", body: JSON.stringify({
+          productName: name, category: "Scanned", quantity: qty, unitPrice: price,
+          totalPrice: qty * price, costTotal: 0, profit: qty * price,
+          paymentMethod: "Cash", date: new Date().toISOString().split("T")[0]
+        })});
+        saved++;
+      } catch (e) { failed++; }
+    }
+    closeModal();
+    notify(saved + " sale(s) saved" + (failed ? ", " + failed + " skipped" : ""), failed ? "error" : "success");
+    if (Store.activeTab === "sales" || Store.activeTab === "reports") UI.go(Store.activeTab);
+  }
+};
+
+function val(id) { return (document.getElementById(id).value || "").trim(); }
+function numVal(id) { return Number(document.getElementById(id).value) || 0; }
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>

@@ -71,7 +71,7 @@
 <nav id="bottom" class="bottom"><button data-page="dashboard"><b>⌂</b>Home</button><button data-page="sales"><b>◉</b>Sales</button><button data-page="inventory"><b>▣</b>Stock</button><button data-page="analytics"><b>▥</b>Reports</button></nav>
 <div id="modal" class="modal"><div class="dialog"><div class="dialogHead"><b id="modalTitle">Hikma</b><button class="close" onclick="closeModal()">×</button></div><div id="modalBody" class="dialogBody"></div></div></div>
 <script>
-const API_DEFAULT="https://hikma-business-os-api.onrender.com";
+const API_DEFAULT="https://biztrack-pro-api.onrender.com";
 let API=localStorage.getItem("hikma_api_url")||API_DEFAULT;
 let token=localStorage.getItem("hikma_token")||"";
 let currentUser=JSON.parse(localStorage.getItem("hikma_user")||"null");

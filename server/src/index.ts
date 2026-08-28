@@ -44,12 +44,34 @@ app.get("/debug", async (c) => {
       const { getDb } = await import("./db");
       const db = await getDb(c.env.MONGODB_URI);
       await db.command({ ping: 1 });
+
+      const admin = db.admin();
+      const hello = await admin.command({ hello: 1 });
+
       dbOk = true;
+
+      (c as any).transactionDiagnostics = {
+        setName: hello.setName || null,
+        msg: hello.msg || null,
+        isWritablePrimary: !!hello.isWritablePrimary,
+        logicalSessionTimeoutMinutes:
+          hello.logicalSessionTimeoutMinutes ?? null,
+        transactionCapable: !!(
+          hello.setName ||
+          hello.msg === "isdbgrid"
+        ),
+      };
     } catch (e: any) {
       dbError = e?.message || String(e);
     }
   }
-  return c.json({ hasMongoUri, hasJwtSecret, dbOk, dbError });
+  return c.json({
+    hasMongoUri,
+    hasJwtSecret,
+    dbOk,
+    dbError,
+    transactionDiagnostics: (c as any).transactionDiagnostics || null,
+  });
 });
 
 app.route("/api/auth", authRoutes);

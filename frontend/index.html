@@ -325,7 +325,59 @@ async function scanAddToSale(id){
     toast("Could not open sale: " + e.message);
   }
 }
-function renderUsers(){let rows=cache.users;$("page-users").innerHTML=`<div class="hero"><div><h1>Users</h1><p>CEO, Manager and Staff accounts.</p></div><button class="btn primary" onclick="openUser()">＋ User</button></div>${panel('User management',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td><span class="pill good">Active</span></td><td><button class="btn" onclick="editUser('${u._id?.$oid||u._id}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u._id?.$oid||u._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Users are loaded after authentication.</td></tr>'}</tbody></table></div>`)}`}
+function renderUsers(){
+  const rows=cache.users;
+  const canManage=currentUser&&["CEO","Manager"].includes(currentUser.role);
+  const canEditUser=u=>currentUser&&(currentUser.role==="CEO"||String(currentUser.id)===String(u._id?.$oid||u._id));
+
+  $("page-users").innerHTML=`
+    <div class="hero">
+      <div>
+        <h1>Users</h1>
+        <p>CEO, Manager and Staff accounts.</p>
+      </div>
+      ${canManage?`<button class="btn primary" onclick="openUser()">＋ User</button>`:''}
+    </div>
+
+    ${panel('User management',`
+      ${!canManage?`<div class="mini" style="margin-bottom:12px">You can access your account information, but user management is restricted to CEO and Manager roles.</div>`:''}
+      <div class="tableWrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(u=>{
+              const id=u._id?.$oid||u._id;
+              const own=String(currentUser?.id||"")===String(id||"");
+              const editable=canEditUser(u);
+
+              let action='—';
+              if(editable){
+                action=`<button class="btn" onclick="editUser('${esc(id)}')">Edit</button>`;
+              }
+              if(canManage&&!own){
+                action+=` <button class="btn bad" onclick="deleteUser('${esc(id)}')">Delete</button>`;
+              }
+
+              return `<tr>
+                <td>${esc(u.name)}</td>
+                <td>${esc(u.role)}</td>
+                <td><span class="pill good">Active</span></td>
+                <td>${action}</td>
+              </tr>`;
+            }).join('')||'<tr><td colspan="4" class="empty">Users are loaded after authentication.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `)}
+  `;
+}
 function renderSettings(){$("page-settings").innerHTML=`<div class="hero"><div><h1>Settings</h1><p>Business connection and local-device controls.</p></div><button class="btn" onclick="logout()">Log out</button></div><div class="grid three"><div class="card"><div class="cardBody"><h2>Offline data</h2><p class="mini">${cache.products.length} products · ${cache.sales.length} sales · ${cache.customers.length} customers cached.</p><button class="btn" onclick="syncAll()">Sync now</button></div></div><div class="card"><div class="cardBody"><h2>Business</h2><p class="mini">${esc(cache.settings.name||cache.settings.businessName||'Your business')}</p><p class="mini">Current user: ${esc(currentUser?.name||'—')} (${esc(currentUser?.role||'—')})</p></div></div></div>${currentUser&&['CEO','Manager'].includes(currentUser.role)?`<div class="card" style="margin-top:14px;border:1px solid #ef4444"><div class="cardBody"><h2 style="color:#ef4444">Danger Zone</h2><p class="mini">Destructive business-data actions. CEO and Manager only.</p><div style="margin-top:12px"><h3>Clear Sales History</h3><p class="mini">Deletes all sales for this business and restores the quantities back to inventory.</p><button class="btn bad" onclick="resetSalesHistory()">Delete All Sales</button></div></div></div>`:''}`}
 
 function openModal(title,body){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modal").classList.add('open')};function closeModal(){$("modal").classList.remove('open')};$("modal").addEventListener('click',e=>{if(e.target===$("modal"))closeModal()});

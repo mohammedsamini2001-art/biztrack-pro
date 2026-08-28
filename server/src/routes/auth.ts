@@ -139,6 +139,11 @@ authRoutes.post("/users", requireAuth, requireRole("CEO", "Manager"), async (c) 
   if (!name || !["Manager", "Staff"].includes(role) || !/^\d{4}$/.test(pin || "")) {
     return c.json({ error: "name, role (Manager|Staff) and a 4-digit pin are required" }, 400);
   }
+
+  // Managers can create Staff only. CEO can create Manager or Staff.
+  if (actor.role === "Manager" && role !== "Staff") {
+    return c.json({ error: "Managers can create Staff accounts only" }, 403);
+  }
   const db = await getDb(c.env.MONGODB_URI);
   const pinHash = await bcrypt.hash(pin, 10);
   const result = await db.collection("users").insertOne({

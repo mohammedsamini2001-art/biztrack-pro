@@ -25,6 +25,26 @@ export function crudRouter(collectionName: string) {
     return c.json(docs);
   });
 
+  app.get("/:id", async (c) => {
+    const user = c.get("user");
+    const id = c.req.param("id");
+
+    if (!ObjectId.isValid(id)) {
+      return c.json({ error: "Invalid ID" }, 400);
+    }
+
+    const db = await getDb(c.env.MONGODB_URI);
+
+    const doc = await db.collection(collectionName).findOne({
+      _id: new ObjectId(id),
+      businessId: user.businessId,
+    });
+
+    if (!doc) return c.json({ error: "Not found" }, 404);
+
+    return c.json(doc);
+  });
+
   app.post("/", requireRole("CEO", "Manager"), async (c) => {
     const user = c.get("user");
     const body = await c.req.json();

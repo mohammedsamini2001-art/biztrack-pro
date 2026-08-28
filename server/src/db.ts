@@ -6,7 +6,7 @@ import { MongoClient, Db } from "mongodb";
 let cached: { client: MongoClient; db: Db } | null = null;
 let connecting: Promise<{ client: MongoClient; db: Db }> | null = null;
 
-export async function getDb(uri: string, dbName = "biztrack"): Promise<Db> {
+export async function getDb(uri: string, dbName = "hikma_business_os"): Promise<Db> {
   if (cached) return cached.db;
   if (connecting) return (await connecting).db;
 

@@ -28,7 +28,7 @@ app.use(
   })
 );
 
-app.get("/", (c) => c.json({ ok: true, service: "biztrack-pro-api" }));
+app.get("/", (c) => c.json({ ok: true, service: "hikma-business-os-api" }));
 app.get("/health", (c) => c.json({ status: "healthy" }));
 
 // Temporary diagnostics — safe to keep, doesn't leak secret values.

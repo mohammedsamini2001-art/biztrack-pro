@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: biztrack-pro-api
+    name: hikma-business-os-api
     runtime: node
     plan: free
     rootDir: server

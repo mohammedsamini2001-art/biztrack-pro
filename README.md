@@ -1,4 +1,4 @@
-# BizTrack Pro
+# Hikma Business OS
 
 Enterprise sales, inventory, customer, supplier and expense management.
 
@@ -42,7 +42,7 @@ curl http://localhost:3000/debug
 1. Push this repo to GitHub (see below if not done yet).
 2. Go to https://dashboard.render.com → sign up (GitHub sign-in is fastest, no credit card required for the free tier).
 3. Click **New** → **Web Service**.
-4. Connect your GitHub account and select the `biztrack-pro` repo.
+4. Connect your GitHub account and select the `hikma-business-os` repo.
 5. Render should detect `render.yaml` automatically. If it asks you to configure manually instead:
    - **Root Directory**: `server`
    - **Build Command**: `npm install && npm run build`
@@ -52,7 +52,7 @@ curl http://localhost:3000/debug
    - `MONGODB_URI` → your connection string
    - `JWT_SECRET` → any long random string
 7. Click **Create Web Service**. Render will build and deploy — takes a few minutes the first time.
-8. Once live, Render gives you a URL like `https://biztrack-pro-api.onrender.com`.
+8. Once live, Render gives you a URL like `https://hikma-business-os-api.onrender.com`.
 
 **Note:** the free tier spins down after 15 minutes of no traffic and takes
 30-50 seconds to wake back up on the next request. That's normal — not a bug.

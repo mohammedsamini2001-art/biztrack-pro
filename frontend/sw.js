@@ -1,6 +1,6 @@
 // Minimal service worker: caches the app shell so it installs and opens
 // instantly, even offline. Live data still requires a network connection.
-const CACHE = "biztrack-shell-v1";
+const CACHE = "hikma-shell-v1";
 const SHELL = ["/", "/index.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {

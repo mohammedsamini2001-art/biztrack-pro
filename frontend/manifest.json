@@ -1,6 +1,6 @@
 {
-  "name": "BizTrack Pro",
-  "short_name": "BizTrack",
+  "name": "Hikma Business OS",
+  "short_name": "Hikma",
   "description": "Business management: sales, inventory, customers, suppliers, purchases",
   "start_url": "/",
   "display": "standalone",

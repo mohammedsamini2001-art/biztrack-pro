@@ -172,7 +172,95 @@ function paymentMix(s){let m={};s.forEach(x=>{let n=x.paymentMethod||'Unknown';m
 function drawAnalytics(range){if(!window.Chart)return;let d=chartData(range===7?49:range===14?98:range);let el=$("analyticsChart");if(!el)return;chart2?.destroy();chart2=new Chart(el,{type:'line',data:{labels:d.map(x=>x.k),datasets:[{label:'Revenue',data:d.map(x=>x.v),borderColor:'#61a4ff',backgroundColor:'rgba(97,164,255,.1)',fill:true,tension:.35,pointRadius:range>30?1.5:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#91a4bd'}}},scales:{x:{ticks:{color:'#91a4bd',maxTicksLimit:12},grid:{display:false}},y:{ticks:{color:'#91a4bd',callback:v=>'KSh '+Number(v).toLocaleString()},grid:{color:'rgba(34,51,76,.25)'}}}}})}
 function renderScan(){$("page-scan").innerHTML=`<div class="hero"><div><h1>Scan / QR</h1><p>Use the phone camera when supported, or find products by SKU/barcode.</p></div></div><div class="grid two"><div class="card"><div class="cardHead"><h2>Camera scanner</h2></div><div class="cardBody"><video id="video" playsinline muted style="width:100%;aspect-ratio:16/9;background:#050b14;border-radius:12px"></video><div class="actions" style="margin-top:9px"><button class="btn primary" onclick="startScanner()">Start camera</button><button class="btn" onclick="stopScanner()">Stop</button></div><p id="scanMsg" class="mini">Browser barcode detection is used when available.</p></div></div><div class="card"><div class="cardHead"><h2>Product lookup</h2></div><div class="cardBody"><input id="lookup" class="input" placeholder="SKU / barcode"><button class="btn primary" style="margin-top:9px" onclick="lookupProduct()">Find product</button><div id="lookupResult" class="insights" style="margin-top:12px"></div><div style="margin-top:20px;text-align:center"><span class="pill">QR payload</span><div id="qr" style="width:170px;height:170px;background:#fff;margin:12px auto;display:grid;grid-template-columns:repeat(12,1fr);gap:2px;padding:10px"></div><div class="mini">Business QR preview for sharing a business identifier.</div></div></div></div></div>`;makeQR()}
 function makeQR(){let target=$("qr");if(!target)return;let s=(businessCode||"HIKMA");let h=0;for(let c of s)h=(h*31+c.charCodeAt(0))>>>0;let bits="";for(let i=0;i<144;i++){h=(h*1664525+1013904223)>>>0;bits+=`<i style="background:${h%3?'#07111f':'transparent'}"></i>`}target.innerHTML=bits}
-async function startScanner(){try{scannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});$("video").srcObject=scannerStream;await $("video").play();$("scanMsg").textContent='Camera active. Browser detection will be used when available.';if('BarcodeDetector'in window){let detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','upc_a']});let loop=async()=>{if(!scannerStream)return;try{let codes=await detector.detect($("video"));if(codes[0]){$("lookup").value=codes[0].rawValue;lookupProduct();$("scanMsg").textContent='Detected '+codes[0].rawValue}}catch{}requestAnimationFrame(loop)};loop()} }catch(e){$("scanMsg").textContent='Camera permission unavailable. Use manual lookup.'}}
+async function startScanner(){
+  const msg=$("scanMsg");
+  const video=$("video");
+
+  if(!video){
+    return;
+  }
+
+  if(!window.isSecureContext){
+    msg.textContent='Camera requires a secure HTTPS connection.';
+    return;
+  }
+
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    msg.textContent='This browser does not support camera access. Use manual lookup.';
+    return;
+  }
+
+  try{
+    stopScanner();
+
+    msg.textContent='Requesting camera permission...';
+
+    scannerStream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:1280},
+        height:{ideal:720}
+      },
+      audio:false
+    });
+
+    video.srcObject=scannerStream;
+    await video.play();
+
+    msg.textContent='Camera active. Point it at a barcode or QR code.';
+
+    if('BarcodeDetector' in window){
+      let detector;
+      try{
+        detector=new BarcodeDetector({
+          formats:['qr_code','ean_13','ean_8','code_128','upc_a']
+        });
+      }catch{
+        detector=new BarcodeDetector();
+      }
+
+      const loop=async()=>{
+        if(!scannerStream||video.readyState<2)return;
+
+        try{
+          const codes=await detector.detect(video);
+
+          if(codes.length){
+            const value=codes[0].rawValue||'';
+            if(value){
+              $("lookup").value=value;
+              lookupProduct();
+              msg.textContent='Detected: '+value;
+            }
+          }
+        }catch{}
+
+        if(scannerStream) requestAnimationFrame(loop);
+      };
+
+      requestAnimationFrame(loop);
+    }else{
+      msg.textContent='Camera active. Automatic barcode detection is not supported by this browser. Use Product Lookup.';
+    }
+
+  }catch(e){
+    console.error('Camera error:',e);
+
+    const name=e?.name||'UnknownError';
+
+    if(name==='NotAllowedError'||name==='PermissionDeniedError'){
+      msg.textContent='Camera permission was denied. Allow camera access for this site, then try again.';
+    }else if(name==='NotFoundError'||name==='DevicesNotFoundError'){
+      msg.textContent='No camera was found on this device.';
+    }else if(name==='NotReadableError'||name==='TrackStartError'){
+      msg.textContent='The camera is busy or unavailable. Close other apps using the camera and try again.';
+    }else if(name==='OverconstrainedError'){
+      msg.textContent='The requested camera mode is unavailable. Try again.';
+    }else{
+      msg.textContent='Camera error: '+name+'. You can still use Product Lookup.';
+    }
+  }
+}
 function stopScanner(){scannerStream?.getTracks().forEach(t=>t.stop());scannerStream=null;let v=$("video");if(v)v.srcObject=null}
 function lookupProduct(){let q=$("lookup").value.trim().toLowerCase();let p=cache.products.find(x=>String(x.sku||'').toLowerCase()===q||String(x.barcode||'').toLowerCase()===q);$("lookupResult").innerHTML=p?`<div class="insight"><b>${esc(p.name)}</b><span class="mini">${esc(p.category)} · ${esc(p.sku||p.barcode||'')} · ${p.stock} in stock · ${money(p.sellPrice)}</span></div>`:'<div class="insight"><b>Not found</b><span class="mini">No product in the current dataset matches that code.</span></div>'}
 function renderUsers(){let rows=cache.users;$("page-users").innerHTML=`<div class="hero"><div><h1>Users</h1><p>CEO, Manager and Staff accounts.</p></div><button class="btn primary" onclick="openUser()">＋ User</button></div>${panel('User management',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td><span class="pill good">Active</span></td><td><button class="btn" onclick="editUser('${u._id?.$oid||u._id}')">Edit</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Users are loaded after authentication.</td></tr>'}</tbody></table></div>`)}`}

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ObjectId } from "mongodb";
 import { getDb } from "../db";
-import { requireAuth } from "../auth";
+import { requireAuth, requireRole } from "../auth";
 import type { Env, AuthUser } from "../types";
 
 type AppEnv = {
@@ -218,6 +218,160 @@ salesRoutes.post("/", async (c) => {
 
     throw error;
   }
+});
+
+/**
+ * Delete a sale and restore its quantity to stock.
+ * CEO and Manager only.
+ */
+salesRoutes.delete("/:id", requireRole("CEO", "Manager"), async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+
+  if (!id || !ObjectId.isValid(id)) {
+    return c.json({ error: "Invalid sale ID" }, 400);
+  }
+
+  const db = await getDb(c.env.MONGODB_URI);
+  const sales = db.collection("sales");
+
+  const sale = await sales.findOne({
+    _id: new ObjectId(id),
+    businessId: user.businessId,
+  });
+
+  if (!sale) {
+    return c.json({ error: "Sale not found" }, 404);
+  }
+
+  const quantity = Number(sale.quantity || 0);
+
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return c.json({ error: "Sale has an invalid quantity" }, 400);
+  }
+
+  const productId = sale.productId;
+
+  if (!productId || !ObjectId.isValid(String(productId))) {
+    return c.json({ error: "Sale has an invalid product reference" }, 400);
+  }
+
+  const productUpdate = await db.collection("products").updateOne(
+    {
+      _id: new ObjectId(String(productId)),
+      businessId: user.businessId,
+    },
+    {
+      $inc: { stock: quantity },
+      $set: { updatedAt: new Date().toISOString() },
+    }
+  );
+
+  if (productUpdate.matchedCount !== 1) {
+    return c.json(
+      { error: "Product for this sale was not found. Sale was not deleted." },
+      404
+    );
+  }
+
+  try {
+    const result = await sales.deleteOne({
+      _id: new ObjectId(id),
+      businessId: user.businessId,
+    });
+
+    if (result.deletedCount !== 1) {
+      await db.collection("products").updateOne(
+        {
+          _id: new ObjectId(String(productId)),
+          businessId: user.businessId,
+        },
+        { $inc: { stock: -quantity } }
+      );
+
+      return c.json({ error: "Sale could not be deleted" }, 409);
+    }
+
+    return c.json({
+      success: true,
+      message: "Sale deleted and stock restored",
+      restoredQuantity: quantity,
+    });
+  } catch (error) {
+    await db.collection("products").updateOne(
+      {
+        _id: new ObjectId(String(productId)),
+        businessId: user.businessId,
+      },
+      { $inc: { stock: -quantity } }
+    );
+
+    throw error;
+  }
+});
+
+/**
+ * Clear all sales for the logged-in business.
+ * Restores sold quantities to inventory.
+ * CEO and Manager only.
+ */
+salesRoutes.delete("/reset/all", requireRole("CEO", "Manager"), async (c) => {
+  const user = c.get("user");
+  const db = await getDb(c.env.MONGODB_URI);
+
+  const sales = await db.collection("sales")
+    .find({ businessId: user.businessId })
+    .toArray();
+
+  if (sales.length === 0) {
+    return c.json({
+      success: true,
+      message: "No sales to clear",
+      deletedSales: 0,
+      restoredUnits: 0,
+    });
+  }
+
+  const restore = new Map<string, number>();
+
+  for (const sale of sales) {
+    const productId = sale.productId;
+    const quantity = Number(sale.quantity || 0);
+
+    if (
+      productId &&
+      ObjectId.isValid(String(productId)) &&
+      Number.isInteger(quantity) &&
+      quantity > 0
+    ) {
+      const key = String(productId);
+      restore.set(key, (restore.get(key) || 0) + quantity);
+    }
+  }
+
+  for (const [productId, quantity] of restore) {
+    await db.collection("products").updateOne(
+      {
+        _id: new ObjectId(productId),
+        businessId: user.businessId,
+      },
+      {
+        $inc: { stock: quantity },
+        $set: { updatedAt: new Date().toISOString() },
+      }
+    );
+  }
+
+  const result = await db.collection("sales").deleteMany({
+    businessId: user.businessId,
+  });
+
+  return c.json({
+    success: true,
+    message: "Sales history cleared and stock restored",
+    deletedSales: result.deletedCount,
+    restoredUnits: [...restore.values()].reduce((a, n) => a + n, 0),
+  });
 });
 
 export default salesRoutes;

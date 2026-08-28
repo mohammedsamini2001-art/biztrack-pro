@@ -1,9 +1,20 @@
-# Frontend
+# Hikma Business OS — Frontend Package
 
-Your existing Hikma Business OS single-file HTML app goes here, wired up to
-call the Worker API instead of keeping everything in local JS state.
+Responsive, offline-first frontend for phone and laptop.
 
-Not done yet: the HTML file you pasted in chat got cut off partway
-through the AI-insights function, so ask Claude to finish/wire it up
-in a follow-up message with the full file (or re-upload it) once the
-backend is deployed.
+## Included
+- Dashboard with sales, profit, stock and AI-style local insights
+- Sales/POS with payment methods including M-Pesa and Airtel Money labels
+- Inventory/products, SKU/barcode fields, low-stock alerts
+- Purchases, CRM/customers, employees, expenses and invoices sections
+- Analysis: 7-day, 14-week, 1-month and 1-year views
+- Best-selling products and full operational report export
+- Camera QR/barcode scanning where browser support exists
+- Offline local storage and PWA service worker
+- JSON backup/restore-ready architecture
+- Configurable API URL, defaulting to the Hikma API
+
+## Deploy
+Upload the contents to a static host such as GitHub Pages, Cloudflare Pages, Netlify or Vercel static hosting.
+
+The frontend is intentionally self-contained: no npm install or build command is required.

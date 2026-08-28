@@ -224,6 +224,71 @@ salesRoutes.post("/", async (c) => {
  * Delete a sale and restore its quantity to stock.
  * CEO and Manager only.
  */
+/**
+ * Clear all sales for the logged-in business.
+ * Restores sold quantities to inventory.
+ * CEO and Manager only.
+ */
+salesRoutes.delete("/reset/all", requireRole("CEO", "Manager"), async (c) => {
+  const user = c.get("user");
+  const db = await getDb(c.env.MONGODB_URI);
+
+  const sales = await db.collection("sales")
+    .find({ businessId: user.businessId })
+    .toArray();
+
+  if (sales.length === 0) {
+    return c.json({
+      success: true,
+      message: "No sales to clear",
+      deletedSales: 0,
+      restoredUnits: 0,
+    });
+  }
+
+  const restore = new Map<string, number>();
+
+  for (const sale of sales) {
+    const productId = sale.productId;
+    const quantity = Number(sale.quantity || 0);
+
+    if (
+      productId &&
+      ObjectId.isValid(String(productId)) &&
+      Number.isInteger(quantity) &&
+      quantity > 0
+    ) {
+      const key = String(productId);
+      restore.set(key, (restore.get(key) || 0) + quantity);
+    }
+  }
+
+  for (const [productId, quantity] of restore) {
+    await db.collection("products").updateOne(
+      {
+        _id: new ObjectId(productId),
+        businessId: user.businessId,
+      },
+      {
+        $inc: { stock: quantity },
+        $set: { updatedAt: new Date().toISOString() },
+      }
+    );
+  }
+
+  const result = await db.collection("sales").deleteMany({
+    businessId: user.businessId,
+  });
+
+  return c.json({
+    success: true,
+    message: "Sales history cleared and stock restored",
+    deletedSales: result.deletedCount,
+    restoredUnits: [...restore.values()].reduce((a, n) => a + n, 0),
+  });
+});
+
+
 salesRoutes.delete("/:id", requireRole("CEO", "Manager"), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
@@ -308,70 +373,6 @@ salesRoutes.delete("/:id", requireRole("CEO", "Manager"), async (c) => {
 
     throw error;
   }
-});
-
-/**
- * Clear all sales for the logged-in business.
- * Restores sold quantities to inventory.
- * CEO and Manager only.
- */
-salesRoutes.delete("/reset/all", requireRole("CEO", "Manager"), async (c) => {
-  const user = c.get("user");
-  const db = await getDb(c.env.MONGODB_URI);
-
-  const sales = await db.collection("sales")
-    .find({ businessId: user.businessId })
-    .toArray();
-
-  if (sales.length === 0) {
-    return c.json({
-      success: true,
-      message: "No sales to clear",
-      deletedSales: 0,
-      restoredUnits: 0,
-    });
-  }
-
-  const restore = new Map<string, number>();
-
-  for (const sale of sales) {
-    const productId = sale.productId;
-    const quantity = Number(sale.quantity || 0);
-
-    if (
-      productId &&
-      ObjectId.isValid(String(productId)) &&
-      Number.isInteger(quantity) &&
-      quantity > 0
-    ) {
-      const key = String(productId);
-      restore.set(key, (restore.get(key) || 0) + quantity);
-    }
-  }
-
-  for (const [productId, quantity] of restore) {
-    await db.collection("products").updateOne(
-      {
-        _id: new ObjectId(productId),
-        businessId: user.businessId,
-      },
-      {
-        $inc: { stock: quantity },
-        $set: { updatedAt: new Date().toISOString() },
-      }
-    );
-  }
-
-  const result = await db.collection("sales").deleteMany({
-    businessId: user.businessId,
-  });
-
-  return c.json({
-    success: true,
-    message: "Sales history cleared and stock restored",
-    deletedSales: result.deletedCount,
-    restoredUnits: [...restore.values()].reduce((a, n) => a + n, 0),
-  });
 });
 
 export default salesRoutes;

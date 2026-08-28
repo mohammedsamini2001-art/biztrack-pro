@@ -108,7 +108,57 @@ function topProducts(){let m={};cache.sales.forEach(s=>{let n=s.productName||s.p
 function stockAlerts(){let a=lowStock().slice(0,6);return a.length?a.map(p=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(p.name)}</div><div class="rowsub">${p.stock} ${esc(p.unit||'units')} remaining</div></div><span class="pill ${p.stock<=0?'bad':'warn'}">${p.stock<=0?'Out':'Low'}</span></div>`).join(''):'<div class="empty">Inventory looks healthy.</div>'}
 function recentSales(){let a=[...cache.sales].reverse().slice(0,5);return a.length?a.map(s=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(s.productName||s.product||'Sale')}</div><div class="rowsub">${esc(s.date||'')}</div></div><div class="amount">${money(s.totalPrice||s.total)}</div></div>`).join(''):'<div class="empty">No sales yet.</div>'}
 function buildInsights(){let revenue=sumSales(),profit=cache.sales.reduce((a,s)=>a+Number(s.profit||0),0),low=lowStock(),best=Object.entries(cache.sales.reduce((m,s)=>{let n=s.productName||s.product; if(n)m[n]=(m[n]||0)+Number(s.totalPrice||0);return m},{})).sort((a,b)=>b[1]-a[1])[0];return[{title:'Revenue snapshot',text:`Hikma has recorded ${money(revenue)} across ${cache.sales.length} sales.`},{title:'Profit watch',text:profit>0?`Recorded sales carry ${money(profit)} in profit before expenses.`:'Profit data is not available yet; record product costs to improve the analysis.'},{title:'Inventory action',text:low.length?`${low.length} product(s) are at or below their reorder level.`:'No products are currently below their reorder level.'},{title:'Best seller',text:best?`${best[0]} is leading recorded sales at ${money(best[1])}.`:'Record product-linked sales to identify the best seller.'}]}
-function renderSales(){let rows=[...cache.sales].reverse();$("page-sales").innerHTML=`<div class="hero"><div><h1>Sales / POS</h1><p>Transactions, customers and payment records.</p></div><button class="btn primary" onclick="openSale()">＋ Record sale</button></div>${panel('Sales ledger',`<div class="tableWrap"><table class="table"><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Customer</th><th>Payment</th><th>Total</th></tr></thead><tbody>${rows.map(s=>`<tr><td>${esc(s.date||'')}</td><td>${esc(s.productName||s.product||'—')}</td><td>${s.quantity||s.qty||1}</td><td>${esc(s.customerName||s.customer||'Walk-in')}</td><td>${esc(s.paymentMethod||s.payment||'—')}</td><td><b>${money(s.totalPrice??s.total??0)}</b></td></tr>`).join('')||'<tr><td colspan="6" class="empty">No sales yet.</td></tr>'}</tbody></table></div>`)}`}
+function renderSales(){
+  let rows=[...cache.sales].reverse();
+
+  $("page-sales").innerHTML=`
+    <div class="hero">
+      <div>
+        <h1>Sales / POS</h1>
+        <p>Transactions, customers and payment records.</p>
+      </div>
+      <button class="btn primary" onclick="openSale()">＋ Record sale</button>
+    </div>
+
+    ${panel('Sales ledger',`
+      <div class="tableWrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Customer</th>
+              <th>Payment</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(s=>{
+              let id=s._id?.$oid||s._id;
+              return `
+                <tr>
+                  <td>${esc(s.date||'')}</td>
+                  <td>${esc(s.productName||s.product||'—')}</td>
+                  <td>${s.quantity||s.qty||1}</td>
+                  <td>${esc(s.customerName||s.customer||'Walk-in')}</td>
+                  <td>${esc(s.paymentMethod||s.payment||'—')}</td>
+                  <td><b>${money(s.totalPrice??s.total??0)}</b></td>
+                  <td>
+                    ${id
+                      ? `<button class="btn bad" onclick="deleteSale('${esc(id)}')">Delete</button>`
+                      : '—'}
+                  </td>
+                </tr>`;
+            }).join('')||'<tr><td colspan="7" class="empty">No sales yet.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `)}
+  `;
+}
+
 function renderInventory(){let rows=cache.products;$("page-inventory").innerHTML=`<div class="hero"><div><h1>Inventory</h1><p>Products, variants, stock, prices and reorder levels.</p></div><button class="btn primary" onclick="openProduct()">＋ Add product</button></div>${panel('Product catalog',`<div class="tableWrap"><table class="table"><thead><tr><th>Product</th><th>Category</th><th>SKU</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.category)}</td><td>${esc(p.sku||'—')}</td><td>${money(p.sellPrice||0)}</td><td>${p.stock}</td><td><span class="pill ${p.stock<=p.reorderLevel?'warn':'good'}">${p.stock<=p.reorderLevel?'Low stock':'Healthy'}</span></td><td><button class="btn bad" onclick="deleteProduct('${p._id?.$oid||p._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No products yet.</td></tr>'}</tbody></table></div>`)}`}
 function renderCustomers(){let rows=cache.customers;$("page-customers").innerHTML=`<div class="hero"><div><h1>CRM / Customers</h1><p>Contacts, loyalty, balances and history.</p></div><button class="btn primary" onclick="openCustomer()">＋ Customer</button></div>${panel('Customers',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Loyalty</th><th>Balance</th><th></th></tr></thead><tbody>${rows.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.phone||'—')}</td><td>${esc(c.email||'—')}</td><td>${c.loyalty||0}</td><td>${money(c.balance||0)}</td><td><button class="btn bad" onclick="deleteCrud('customers','${c._id?.$oid||c._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">No customers yet.</td></tr>'}</tbody></table></div>`)}`}
 function renderPurchases(){let rows=cache.purchases;$("page-purchases").innerHTML=`<div class="hero"><div><h1>Purchases</h1><p>Purchase orders and stock receipts.</p></div><button class="btn primary" onclick="openPurchase()">＋ Purchase</button></div>${panel('Purchase orders',`<div class="tableWrap"><table class="table"><thead><tr><th>Date</th><th>Supplier</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.date||'')}</td><td>${esc(p.supplierName||'')}</td><td>${(p.items||[]).length}</td><td>${money(p.totalCost)}</td><td>${esc(p.paymentMethod||'')}</td><td><span class="pill">${esc(p.status||'received')}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty">No purchases yet.</td></tr>'}</tbody></table></div>`)}`}
@@ -410,6 +460,35 @@ async function submitUser(e){e.preventDefault();let x={name:$("un").value,role:$
 function editUser(id){let u=cache.users.find(x=>(x._id?.$oid||x._id)===id);if(!u)return;openModal('Edit profile',`<form onsubmit="submitEditUser(event,'${id}')" class="form"><div class="field"><label>Name</label><input id="eun" class="input" value="${esc(u.name)}"></div><div class="field"><label>New PIN (optional)</label><input id="eup" class="input" maxlength="4"></div><button class="btn primary">Save changes</button></form>`)}
 async function submitEditUser(e,id){e.preventDefault();let x={name:$("eun").value};if($("eup").value)x.pin=$("eup").value;try{let saved=await api('/api/auth/users/'+id,{method:'PUT',body:JSON.stringify(x)});cache.users=cache.users.map(u=>(u._id?.$oid||u._id)===id?saved:u);saveCache();closeModal();renderAll();toast('User updated.')}catch(err){toast(err.message)}}
 async function deleteProduct(id){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can delete records.');return;}if(!confirm('Delete this product?'))return;try{await api('/api/products/'+id,{method:'DELETE'});cache.products=cache.products.filter(p=>(p._id?.$oid||p._id)!==id);saveCache();renderAll();toast('Product deleted.')}catch(e){toast(e.message)}}
+async function deleteSale(id){
+  if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){
+    toast('Only CEO or Manager can delete sales.');
+    return;
+  }
+
+  if(!id){
+    toast('Invalid sale ID.');
+    return;
+  }
+
+  if(!confirm('Delete this sale and restore its quantity to inventory?')) return;
+
+  try{
+    const result=await api('/api/sales/'+id,{method:'DELETE'});
+
+    cache.sales=cache.sales.filter(
+      x=>(x._id?.$oid||x._id)!==id
+    );
+
+    saveCache();
+    await syncAll();
+
+    toast(result.message||'Sale deleted and stock restored.');
+  }catch(e){
+    toast('Could not delete sale: '+e.message);
+  }
+}
+
 async function deleteCrud(col,id){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can delete records.');return;}if(!confirm('Delete this record?'))return;try{await api('/api/'+col+'/'+id,{method:'DELETE'});cache[col]=cache[col].filter(x=>(x._id?.$oid||x._id)!==id);saveCache();renderAll();toast('Deleted.')}catch(e){toast(e.message)}}
 function openPurchase(){let p=cache.products[0],s=cache.suppliers[0];openModal('New purchase',`<form class="form" onsubmit="submitPurchase(event)"><div class="formgrid"><div class="field"><label>Supplier ID</label><input id="supid" class="input" value="${esc(s?._id?.$oid||s?._id||'')}" required></div><div class="field"><label>Supplier name</label><input id="supname" class="input" value="${esc(s?.name||'')}" required></div><div class="field"><label>Product ID</label><input id="ppid" class="input" value="${esc(p?._id?.$oid||p?._id||'')}" required></div><div class="field"><label>Product name</label><input id="ppname" class="input" value="${esc(p?.name||'')}" required></div><div class="field"><label>Quantity</label><input id="pqty" class="input" type="number" min="1" value="1" required></div><div class="field"><label>Unit cost</label><input id="pcu" class="input" type="number" step="0.01" value="0" required></div></div><div class="field"><label>Payment method</label><select id="ppm" class="input"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Credit</option></select></div><button class="btn primary">Save purchase</button></form>`)}
 async function submitPurchase(e){e.preventDefault();let x={supplierId:$("supid").value,supplierName:$("supname").value,items:[{productId:$("ppid").value,productName:$("ppname").value,quantity:Number($("pqty").value),unitCost:Number($("pcu").value)}],paymentMethod:$("ppm").value,status:'received'};try{let saved=await api('/api/purchases',{method:'POST',body:JSON.stringify(x)});cache.purchases.push(saved);saveCache();closeModal();syncAll();toast('Purchase saved and stock updated.')}catch(e){toast(e.message)}}

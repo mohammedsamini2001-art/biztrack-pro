@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ObjectId } from "mongodb";
 import { getDb } from "../db";
-import { requireAuth } from "../auth";
+import { requireAuth, requireRole } from "../auth";
 import type { Env, AuthUser } from "../types";
 
 type AppEnv = { Bindings: Env; Variables: { user: AuthUser } };
@@ -137,7 +137,7 @@ purchasesRoutes.post("/:id/receive", async (c) => {
   return c.json(updated);
 });
 
-purchasesRoutes.delete("/:id", async (c) => {
+purchasesRoutes.delete("/:id", requireRole("CEO", "Manager"), async (c) => {
   const user = c.get("user");
   const db = await getDb(c.env.MONGODB_URI);
   const result = await db.collection("purchases").deleteOne({ _id: new ObjectId(c.req.param("id")), businessId: user.businessId });

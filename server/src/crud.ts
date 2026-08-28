@@ -49,6 +49,7 @@ export function crudRouter(collectionName: string) {
     const user = c.get("user");
     const body = await c.req.json();
     delete body._id;
+    delete body.businessId;
     const db = await getDb(c.env.MONGODB_URI);
     const doc = { ...body, businessId: user.businessId, createdAt: new Date().toISOString() };
     const result = await db.collection(collectionName).insertOne(doc);
@@ -60,6 +61,7 @@ export function crudRouter(collectionName: string) {
     const id = c.req.param("id");
     const body = await c.req.json();
     delete body._id;
+    delete body.businessId;
     const db = await getDb(c.env.MONGODB_URI);
     const result = await db
       .collection(collectionName)

@@ -93,6 +93,8 @@ const navLabels={dashboard:["Dashboard","Executive business overview"],sales:["S
 function go(page){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$("page-"+page).classList.add('active');document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===page));$("title").textContent=navLabels[page][0];$("subtitle").textContent=navLabels[page][1];$("sidebar").classList.remove('open');({dashboard:renderDashboard,sales:renderSales,inventory:renderInventory,customers:renderCustomers,purchases:renderPurchases,suppliers:renderSuppliers,employees:renderEmployees,analytics:renderAnalytics,scan:renderScan,users:renderUsers,settings:renderSettings}[page]||renderDashboard)()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));$("hamb").onclick=()=>$("sidebar").classList.toggle('open');
 function sumSales(){return cache.sales.reduce((a,s)=>a+Number(s.totalPrice||s.total||0),0)}
+function sumCashSales(){return cache.sales.reduce((a,s)=>a+Number(s.cashAmount??(String(s.paymentMethod||"").toLowerCase()==="cash"?(s.totalPrice??s.total??0):0)),0)}
+function sumPaymentSales(method){return cache.sales.reduce((a,s)=>a+(String(s.paymentMethod||"").toLowerCase()===String(method).toLowerCase()?Number(s.paymentAmount??s.totalPrice??s.total??0):0),0)}
 function totalUnits(){return cache.products.reduce((a,p)=>a+Number(p.stock||0),0)}
 function lowStock(){return cache.products.filter(p=>Number(p.stock||0)<=Number(p.reorderLevel||0))}
 function days(n){let d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}

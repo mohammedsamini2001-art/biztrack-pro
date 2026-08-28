@@ -4,7 +4,10 @@ import { getDb } from "../db";
 import { requireAuth } from "../auth";
 import type { Env, AuthUser } from "../types";
 
-type AppEnv = { Bindings: Env; Variables: { user: AuthUser } };
+type AppEnv = {
+  Bindings: Env;
+  Variables: { user: AuthUser };
+};
 
 export const salesRoutes = new Hono<AppEnv>();
 
@@ -20,7 +23,7 @@ salesRoutes.get("/", async (c) => {
   const docs = await db
     .collection("sales")
     .find({ businessId: user.businessId })
-    .sort({ _id: -1 })
+    .sort({ createdAt: -1 })
     .limit(2000)
     .toArray();
 
@@ -28,15 +31,18 @@ salesRoutes.get("/", async (c) => {
 });
 
 /**
- * Create a sale directly from an inventory product.
+ * Create a sale.
  *
- * The server is authoritative:
- * - product must exist
- * - product must belong to the user's business
- * - stock must be sufficient
- * - price comes from inventory
- * - total and profit are calculated automatically
- * - stock is reduced automatically
+ * IMPORTANT:
+ * The server is authoritative for:
+ * - product
+ * - quantity
+ * - selling price
+ * - cost
+ * - total
+ * - profit
+ * - payment method
+ * - cash amount
  */
 salesRoutes.post("/", async (c) => {
   const user = c.get("user");
@@ -50,7 +56,30 @@ salesRoutes.post("/", async (c) => {
   }
 
   if (!Number.isInteger(quantity) || quantity <= 0) {
-    return c.json({ error: "Quantity must be a positive whole number" }, 400);
+    return c.json(
+      { error: "Quantity must be a positive whole number" },
+      400
+    );
+  }
+
+  const paymentMethod = String(body.paymentMethod || "Cash").trim();
+
+  const allowedPayments = [
+    "Cash",
+    "M-Pesa",
+    "Airtel Money",
+    "Card",
+    "Bank",
+    "Other",
+  ];
+
+  if (!allowedPayments.includes(paymentMethod)) {
+    return c.json(
+      {
+        error: `Invalid payment method. Allowed: ${allowedPayments.join(", ")}`,
+      },
+      400
+    );
   }
 
   const db = await getDb(c.env.MONGODB_URI);
@@ -69,7 +98,9 @@ salesRoutes.post("/", async (c) => {
   if (currentStock < quantity) {
     return c.json(
       {
-        error: `Insufficient stock. Only ${currentStock} ${product.unit || "units"} available.`,
+        error: `Insufficient stock. Only ${currentStock} ${
+          product.unit || "units"
+        } available.`,
         availableStock: currentStock,
       },
       400
@@ -79,14 +110,26 @@ salesRoutes.post("/", async (c) => {
   const costPrice = Number(product.costPrice || 0);
   const sellPrice = Number(product.sellPrice || 0);
 
-  const totalPrice = quantity * sellPrice;
-  const profit = quantity * (sellPrice - costPrice);
+  if (!Number.isFinite(sellPrice) || sellPrice < 0) {
+    return c.json({ error: "Product selling price is invalid" }, 400);
+  }
+
+  const totalPrice = Number((quantity * sellPrice).toFixed(2));
+  const profit = Number(
+    (quantity * (sellPrice - costPrice)).toFixed(2)
+  );
 
   /*
-   * Atomic stock deduction.
+   * Cash/payment accounting.
    *
-   * The stock condition is included in the update so two sales
-   * cannot both successfully consume the same final units.
+   * A completed sale contributes its full total to the selected
+   * payment method. Cash sales explicitly persist cashAmount.
+   */
+  const paymentAmount = totalPrice;
+  const cashAmount = paymentMethod === "Cash" ? totalPrice : 0;
+
+  /*
+   * Deduct stock atomically.
    */
   const stockUpdate = await db.collection("products").updateOne(
     {
@@ -103,27 +146,49 @@ salesRoutes.post("/", async (c) => {
   if (stockUpdate.modifiedCount !== 1) {
     return c.json(
       {
-        error: "Stock changed before the sale was completed. Please try again.",
+        error:
+          "Stock changed before the sale was completed. Please try again.",
       },
       409
     );
   }
 
+  const now = new Date().toISOString();
+  const saleDate =
+    body.date || now.slice(0, 10);
+
   const sale = {
     businessId: user.businessId,
+
     productId: product._id,
     productName: product.name,
     category: product.category,
     unit: product.unit,
+
     quantity,
+
     unitPrice: sellPrice,
     costPrice,
+
+    // Canonical totals
     totalPrice,
+    total: totalPrice,
+
+    // Profit
     profit,
-    customerName: body.customerName || "Walk-in",
-    paymentMethod: body.paymentMethod || "Cash",
-    date: body.date || new Date().toISOString().slice(0, 10),
-    createdAt: new Date().toISOString(),
+
+    // Payment/accounting
+    paymentMethod,
+    paymentAmount,
+    cashAmount,
+
+    customerName: String(
+      body.customerName || "Walk-in"
+    ).trim(),
+
+    date: saleDate,
+    createdAt: now,
+    updatedAt: now,
   };
 
   try {
@@ -139,8 +204,7 @@ salesRoutes.post("/", async (c) => {
     );
   } catch (error) {
     /*
-     * If recording the sale fails after stock was deducted,
-     * restore the stock so inventory remains consistent.
+     * Sale failed to save, so restore stock.
      */
     await db.collection("products").updateOne(
       {

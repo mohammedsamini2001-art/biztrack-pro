@@ -291,47 +291,98 @@ async function submitSale(e){
     return;
   }
 
-  const x = {
+  const customerName = ($("sc").value || "").trim() || "Walk-in";
+  const paymentMethod = $("sm").value || "Cash";
+
+  const payload = {
     productId: String(p._id?.$oid || p._id),
     quantity,
-    customerName: $("sc").value || "Walk-in",
-    paymentMethod: $("sm").value,
+    customerName,
+    paymentMethod,
     date: new Date().toISOString().slice(0,10)
   };
 
   const btn = $("saveSaleBtn");
+
   if (btn){
     btn.disabled = true;
     btn.textContent = "Saving...";
   }
 
   try{
+    /*
+     * The API is the source of truth.
+     * It calculates unit price, total price, profit and
+     * deducts inventory on the server.
+     */
     const saved = await api("/api/sales", {
       method: "POST",
-      body: JSON.stringify(x)
+      body: JSON.stringify(payload)
     });
 
-    cache.sales.push(saved);
+    if (!saved || !saved._id){
+      throw new Error("Server did not return the saved sale.");
+    }
 
     /*
-     * Update the local product immediately so the UI reflects
-     * the new stock before the next full sync.
+     * Replace the local sale if it somehow already exists,
+     * otherwise add the authoritative server record.
      */
-    const localProduct = (cache.products || []).find(
-      q => String(q._id?.$oid || q._id) === String(x.productId)
+    const saleId = String(saved._id?.$oid || saved._id);
+
+    const existingSale = (cache.sales || []).findIndex(
+      s => String(s._id?.$oid || s._id) === saleId
     );
 
-    if (localProduct){
-      localProduct.stock = Number(saved.remainingStock ?? (localProduct.stock - quantity));
+    if (existingSale >= 0){
+      cache.sales[existingSale] = saved;
+    }else{
+      cache.sales.push(saved);
+    }
+
+    /*
+     * Update inventory immediately using the server's
+     * remainingStock value.
+     */
+    const productIndex = (cache.products || []).findIndex(
+      q => String(q._id?.$oid || q._id) === String(payload.productId)
+    );
+
+    if (productIndex >= 0){
+      cache.products[productIndex] = {
+        ...cache.products[productIndex],
+        stock: Number(saved.remainingStock ?? 0),
+        updatedAt: saved.createdAt || cache.products[productIndex].updatedAt
+      };
     }
 
     saveCache();
+
     closeModal();
 
+    /*
+     * Refresh from the API after the successful transaction.
+     * This makes Sales, Dashboard, Inventory and Analytics
+     * use the persisted database values.
+     */
     await syncAll();
 
+    /*
+     * Make sure the saved transaction is still present
+     * after synchronization.
+     */
+    const persisted = (cache.sales || []).some(
+      s => String(s._id?.$oid || s._id) === saleId
+    );
+
+    if (!persisted){
+      throw new Error("Sale was created but could not be loaded back from the server.");
+    }
+
+    renderAll();
+
     toast(
-      `Sale saved. ${saved.productName}: ${quantity} sold. Stock remaining: ${saved.remainingStock}.`
+      `Sale saved: ${saved.productName} × ${saved.quantity} — ${money(saved.totalPrice)} (${saved.paymentMethod}).`
     );
 
   }catch(err){
@@ -340,7 +391,7 @@ async function submitSale(e){
       btn.textContent = "Save sale";
     }
 
-    toast("Sale failed: " + err.message);
+    toast("Sale failed: " + (err?.message || "Unknown error"));
   }
 }
 

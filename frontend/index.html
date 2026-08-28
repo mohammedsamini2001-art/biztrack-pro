@@ -47,7 +47,7 @@
   <aside id="sidebar" class="sidebar">
     <div class="brand"><div class="logo">H</div><div><b>Hikma</b><small>BUSINESS OS</small></div></div>
     <div class="nav">
-      <button data-page="dashboard">⌂ <span>Dashboard</span></button><button data-page="sales">◉ <span>Sales / POS</span></button><button data-page="inventory">▣ <span>Inventory</span></button><button data-page="customers">♙ <span>CRM / Customers</span></button><button data-page="purchases">⇩ <span>Purchases</span></button><button data-page="suppliers">◫ <span>Suppliers</span></button><button data-page="employees">♟ <span>Employees</span></button><button data-page="analytics">▥ <span>Analysis & Reports</span></button><button data-page="scan">▦ <span>Scan / QR</span></button><button data-page="users">☻ <span>Users</span></button><button data-page="settings">⚙ <span>Settings</span></button>
+      <button data-page="dashboard">⌂ <span>Dashboard</span></button><button data-page="sales">◉ <span>Sales / POS</span></button><button data-page="inventory">▣ <span>Inventory</span></button><button data-page="customers">♙ <span>CRM / Customers</span></button><button data-page="purchases">⇩ <span>Purchases</span></button><button data-page="suppliers">◫ <span>Suppliers</span></button><button data-page="employees">♟ <span>Employees</span></button><button data-page="analytics" data-private-role="management">▥ <span>Analysis & Reports</span></button><button data-page="scan">▦ <span>Scan / QR</span></button><button data-page="users">☻ <span>Users</span></button><button data-page="settings">⚙ <span>Settings</span></button>
     </div>
     <div class="sidefoot"><div class="statusline"><span id="sideDot" class="dot"></span><span id="sideStatus">Online</span></div><div style="margin-top:6px">Offline cache is enabled for supported local data.</div></div>
   </aside>
@@ -68,7 +68,7 @@
     </div>
   </main>
 </div>
-<nav id="bottom" class="bottom"><button data-page="dashboard"><b>⌂</b>Home</button><button data-page="sales"><b>◉</b>Sales</button><button data-page="inventory"><b>▣</b>Stock</button><button data-page="analytics"><b>▥</b>Reports</button></nav>
+<nav id="bottom" class="bottom"><button data-page="dashboard"><b>⌂</b>Home</button><button data-page="sales"><b>◉</b>Sales</button><button data-page="inventory"><b>▣</b>Stock</button><button data-page="analytics" data-private-role="management"><b>▥</b>Reports</button></nav>
 <div id="modal" class="modal"><div class="dialog"><div class="dialogHead"><b id="modalTitle">Hikma</b><button class="close" onclick="closeModal()">×</button></div><div id="modalBody" class="dialogBody"></div></div></div>
 <script>
 const API_DEFAULT="https://biztrack-pro-api.onrender.com";
@@ -90,6 +90,24 @@ function backToCode(){$("userStep").classList.add("hidden");$("codeStep").classL
 async function login(){let pin=$("pin").value.trim();if(!selectedUserId||!/^\d{4}$/.test(pin)){ $("authErr").textContent="Select a user and enter a 4-digit PIN.";return }try{let r=await apiPublic("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessCode,userId:selectedUserId,pin})});token=r.token;currentUser=r.user;localStorage.setItem("hikma_token",token);localStorage.setItem("hikma_user",JSON.stringify(currentUser));localStorage.setItem("hikma_business_code",businessCode);$("auth").classList.add("hidden");$("app").classList.remove("hidden");renderAll();syncAll()}catch(e){$("authErr").textContent=e.message}}
 function logout(){token="";currentUser=null;localStorage.removeItem("hikma_token");localStorage.removeItem("hikma_user");location.reload()}
 const navLabels={dashboard:["Dashboard","Executive business overview"],sales:["Sales / POS","Transactions and daily selling"],inventory:["Inventory","Products, stock and reorder levels"],customers:["CRM / Customers","Customer relationships and balances"],purchases:["Purchases","Incoming stock and purchase orders"],suppliers:["Suppliers","Supplier relationships and balances"],employees:["Employees","Team records and roles"],analytics:["Analysis & Reports","Trends, leaders, profitability and insights"],scan:["Scan / QR","Barcode, QR and document tools"],users:["Users","Access and account controls"],settings:["Settings","Business configuration and connection"]};
+function applyRoleVisibility(){
+  const isStaff = currentUser && currentUser.role === "Staff";
+
+  document.querySelectorAll('[data-private-role="management"]').forEach(el=>{
+    el.style.display = isStaff ? "none" : "";
+  });
+
+  const dashboard = $("page-dashboard");
+  if (dashboard && isStaff) {
+    dashboard.querySelectorAll(".card.stat").forEach(card=>{
+      const label = card.querySelector("label");
+      if(label && label.textContent.trim().toLowerCase() === "profit"){
+        card.style.display = "none";
+      }
+    });
+  }
+}
+
 function go(page){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$("page-"+page).classList.add('active');document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===page));$("title").textContent=navLabels[page][0];$("subtitle").textContent=navLabels[page][1];$("sidebar").classList.remove('open');({dashboard:renderDashboard,sales:renderSales,inventory:renderInventory,customers:renderCustomers,purchases:renderPurchases,suppliers:renderSuppliers,employees:renderEmployees,analytics:renderAnalytics,scan:renderScan,users:renderUsers,settings:renderSettings}[page]||renderDashboard)()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));$("hamb").onclick=()=>$("sidebar").classList.toggle('open');
 function sumSales(){return cache.sales.reduce((a,s)=>a+Number(s.totalPrice||s.total||0),0)}
@@ -99,7 +117,7 @@ function totalUnits(){return cache.products.reduce((a,p)=>a+Number(p.stock||0),0
 function lowStock(){return cache.products.filter(p=>Number(p.stock||0)<=Number(p.reorderLevel||0))}
 function days(n){let d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
 function periodSales(range){let from=range===365?days(365):days(range);return cache.sales.filter(s=>String(s.date||"")>=from)}
-function renderAll(){renderDashboard();renderSales();renderInventory();renderCustomers();renderPurchases();renderSuppliers();renderEmployees();renderAnalytics();renderScan();renderUsers();renderSettings();}
+function renderAll(){renderDashboard();renderSales();renderInventory();renderCustomers();renderPurchases();renderSuppliers();renderEmployees();renderAnalytics();renderScan();renderUsers();renderSettings();applyRoleVisibility();}
 function renderDashboard(){let today=new Date().toISOString().slice(0,10),t=cache.sales.filter(s=>s.date===today),month=periodSales(30),expenses=(cache.expenses||[]).filter(e=>String(e.date||"")>=days(30)).reduce((a,e)=>a+Number(e.amount||0),0);$("page-dashboard").innerHTML=`<div class="hero"><div><h1>Good business starts with visibility.</h1><p>${esc(cache.settings.name||cache.settings.businessName||"Your business")} — everything important in one place.</p></div><div class="actions"><button class="btn" onclick="go('analytics')">View analysis →</button><button class="btn primary" onclick="openSale()">＋ Record sale</button></div></div><div class="grid stats"><div class="card stat"><label>Today revenue</label><strong>${money(t.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">${t.length} transactions</span></div><div class="card stat"><label>30-day revenue</label><strong>${money(month.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">All payment methods</span></div><div class="card stat"><label>Cash received</label><strong>${money(t.reduce((a,s)=>a+Number(s.cashAmount??(String(s.paymentMethod||"").toLowerCase()==="cash"?(s.totalPrice??s.total??0):0)),0))}</strong><span class="trend">Cash payments today</span></div><div class="card stat"><label>Profit</label><strong>${money(month.reduce((a,s)=>a+Number(s.profit||0),0))}</strong><span class="trend">Before expenses</span></div><div class="card stat"><label>Stock value</label><strong>${money(cache.products.reduce((a,p)=>a+Number(p.stock||0)*Number(p.costPrice||0),0))}</strong><span>${totalUnits()} units</span></div><div class="card stat"><label>Customers</label><strong>${cache.customers.length}</strong><span>CRM records</span></div></div><div class="grid two" style="margin-top:14px"><div class="card"><div class="cardHead"><h2>Sales trend</h2><div class="tabs"><button class="tab active" onclick="drawDashboard(30)">1 month</button><button class="tab" onclick="drawDashboard(7)">7 days</button><button class="tab" onclick="drawDashboard(14)">14 days</button><button class="tab" onclick="drawDashboard(365)">1 year</button></div></div><div class="chartWrap"><canvas id="dashChart"></canvas></div></div><div class="card"><div class="cardHead"><h2>AI business pulse</h2><span class="pill">Data-based</span></div><div class="cardBody insights">${buildInsights().map(i=>`<div class="insight"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join('')}</div></div></div><div class="grid three" style="margin-top:14px">${panel('Best sellers',topProducts())}${panel('Stock alerts',stockAlerts())}${panel('Recent sales',recentSales())}</div>`;drawDashboard(30)}
 function panel(title,body){return `<div class="card"><div class="cardHead"><h2>${title}</h2></div><div class="cardBody">${body||'<div class="empty">No data yet.</div>'}</div></div>`}
 function chartData(range){let n=range===365?12:range===30?10:range;let out=[];for(let i=n-1;i>=0;i--){let d=new Date();if(range===365)d.setMonth(d.getMonth()-i);else d.setDate(d.getDate()-i);let k=range===365?d.toISOString().slice(0,7):d.toISOString().slice(0,10);let v=cache.sales.filter(s=>String(s.date||"").startsWith(k)).reduce((a,s)=>a+Number(s.totalPrice||0),0);out.push({k,v})}return out}

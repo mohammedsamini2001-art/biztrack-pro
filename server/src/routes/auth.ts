@@ -152,6 +152,31 @@ authRoutes.post("/users", requireAuth, requireRole("CEO", "Manager"), async (c) 
 });
 
 // Update own profile (name/pin), or CEO editing anyone in the business.
+authRoutes.delete("/users/:id", requireAuth, requireRole("CEO", "Manager"), async (c) => {
+  const actor = c.get("user");
+  const id = String(c.req.param("id") || "").trim();
+
+  if (!ObjectId.isValid(id)) {
+    return c.json({ error: "Invalid userId" }, 400);
+  }
+
+  if (actor.id === id) {
+    return c.json({ error: "You cannot delete your own account" }, 400);
+  }
+
+  const db = await getDb(c.env.MONGODB_URI);
+  const result = await db.collection("users").deleteOne({
+    _id: new ObjectId(id),
+    businessId: actor.businessId,
+  });
+
+  if (!result.deletedCount) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  return c.json({ ok: true, deletedUserId: id });
+});
+
 authRoutes.put("/users/:id", requireAuth, async (c) => {
   const actor = c.get("user");
   const id = c.req.param("id");

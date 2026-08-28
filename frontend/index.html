@@ -263,7 +263,7 @@ async function startScanner(){
 }
 function stopScanner(){scannerStream?.getTracks().forEach(t=>t.stop());scannerStream=null;let v=$("video");if(v)v.srcObject=null}
 function lookupProduct(){let q=$("lookup").value.trim().toLowerCase();let p=cache.products.find(x=>String(x.sku||'').toLowerCase()===q||String(x.barcode||'').toLowerCase()===q);$("lookupResult").innerHTML=p?`<div class="insight"><b>${esc(p.name)}</b><span class="mini">${esc(p.category)} · ${esc(p.sku||p.barcode||'')} · ${p.stock} in stock · ${money(p.sellPrice)}</span></div>`:'<div class="insight"><b>Not found</b><span class="mini">No product in the current dataset matches that code.</span></div>'}
-function renderUsers(){let rows=cache.users;$("page-users").innerHTML=`<div class="hero"><div><h1>Users</h1><p>CEO, Manager and Staff accounts.</p></div><button class="btn primary" onclick="openUser()">＋ User</button></div>${panel('User management',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td><span class="pill good">Active</span></td><td><button class="btn" onclick="editUser('${u._id?.$oid||u._id}')">Edit</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Users are loaded after authentication.</td></tr>'}</tbody></table></div>`)}`}
+function renderUsers(){let rows=cache.users;$("page-users").innerHTML=`<div class="hero"><div><h1>Users</h1><p>CEO, Manager and Staff accounts.</p></div><button class="btn primary" onclick="openUser()">＋ User</button></div>${panel('User management',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td><span class="pill good">Active</span></td><td><button class="btn" onclick="editUser('${u._id?.$oid||u._id}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u._id?.$oid||u._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Users are loaded after authentication.</td></tr>'}</tbody></table></div>`)}`}
 function renderSettings(){$("page-settings").innerHTML=`<div class="hero"><div><h1>Settings</h1><p>Business connection and local-device controls.</p></div><button class="btn" onclick="logout()">Log out</button></div><div class="grid three"><div class="card"><div class="cardBody"><h2>Offline data</h2><p class="mini">${cache.products.length} products · ${cache.sales.length} sales · ${cache.customers.length} customers cached.</p><button class="btn" onclick="syncAll()">Sync now</button></div></div><div class="card"><div class="cardBody"><h2>Business</h2><p class="mini">${esc(cache.settings.name||cache.settings.businessName||'Your business')}</p><p class="mini">Current user: ${esc(currentUser?.name||'—')} (${esc(currentUser?.role||'—')})</p></div></div></div>${currentUser&&['CEO','Manager'].includes(currentUser.role)?`<div class="card" style="margin-top:14px;border:1px solid #ef4444"><div class="cardBody"><h2 style="color:#ef4444">Danger Zone</h2><p class="mini">Destructive business-data actions. CEO and Manager only.</p><div style="margin-top:12px"><h3>Clear Sales History</h3><p class="mini">Deletes all sales for this business and restores the quantities back to inventory.</p><button class="btn bad" onclick="resetSalesHistory()">Delete All Sales</button></div></div></div>`:''}`}
 
 function openModal(title,body){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modal").classList.add('open')};function closeModal(){$("modal").classList.remove('open')};$("modal").addEventListener('click',e=>{if(e.target===$("modal"))closeModal()});
@@ -546,6 +546,33 @@ async function submitEmployee(e){e.preventDefault();let x={name:$("en").value,ro
 function openUser(){openModal('Add user',`<form class="formgrid" onsubmit="submitUser(event)"><div class="field"><label>Name</label><input id="un" class="input" required></div><div class="field"><label>Role</label><select id="ur" class="input"><option>Manager</option><option>Staff</option></select></div><div class="field"><label>4-digit PIN</label><input id="up" class="input" maxlength="4" pattern="\\d{4}" required></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Create user</button></div></form>`)}
 async function submitUser(e){e.preventDefault();let x={name:$("un").value,role:$("ur").value,pin:$("up").value};try{let saved=await api('/api/auth/users',{method:'POST',body:JSON.stringify(x)});cache.users.push(saved);saveCache();closeModal();renderAll();toast('User created.')}catch(err){toast('Could not create user: '+err.message)}}
 function editUser(id){let u=cache.users.find(x=>(x._id?.$oid||x._id)===id);if(!u)return;openModal('Edit profile',`<form onsubmit="submitEditUser(event,'${id}')" class="form"><div class="field"><label>Name</label><input id="eun" class="input" value="${esc(u.name)}"></div><div class="field"><label>New PIN (optional)</label><input id="eup" class="input" maxlength="4"></div><button class="btn primary">Save changes</button></form>`)}
+async function deleteUser(id){
+  if(!currentUser || !["CEO","Manager"].includes(currentUser.role)){
+    toast("Only CEO or Manager can delete users.");
+    return;
+  }
+
+  if((currentUser.id || currentUser._id) === id){
+    toast("You cannot delete your own account.");
+    return;
+  }
+
+  const user = cache.users.find(u => (u._id?.$oid || u._id || u.id) === id);
+  if(!user)return;
+
+  if(!confirm("Delete user " + (user.name || "") + "?"))return;
+
+  try{
+    await api("/api/auth/users/" + id,{method:"DELETE"});
+    cache.users=cache.users.filter(u => (u._id?.$oid || u._id || u.id) !== id);
+    saveCache();
+    renderUsers();
+    toast("User deleted.");
+  }catch(e){
+    toast("Could not delete user: " + e.message);
+  }
+}
+
 async function submitEditUser(e,id){e.preventDefault();let x={name:$("eun").value};if($("eup").value)x.pin=$("eup").value;try{let saved=await api('/api/auth/users/'+id,{method:'PUT',body:JSON.stringify(x)});cache.users=cache.users.map(u=>(u._id?.$oid||u._id)===id?saved:u);saveCache();closeModal();renderAll();toast('User updated.')}catch(err){toast(err.message)}}
 async function deleteProduct(id){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can delete records.');return;}if(!confirm('Delete this product?'))return;try{await api('/api/products/'+id,{method:'DELETE'});cache.products=cache.products.filter(p=>(p._id?.$oid||p._id)!==id);saveCache();renderAll();toast('Product deleted.')}catch(e){toast(e.message)}}
 async function deleteSale(id){

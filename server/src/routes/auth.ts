@@ -12,44 +12,75 @@ function genBusinessCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
+function normalizeBusinessCode(value: unknown) {
+  return String(value || "").trim().toUpperCase();
+}
+
 // Create a new business + its CEO account. Returns the business code
 // the CEO shares with staff so they can find the right login list.
 authRoutes.post("/register-business", async (c) => {
   const { businessName, ownerName, pin } = await c.req.json();
-  if (!businessName || !ownerName || !/^\d{4}$/.test(pin || "")) {
-    return c.json({ error: "businessName, ownerName and a 4-digit pin are required" }, 400);
+
+  const cleanBusinessName = String(businessName || "").trim();
+  const cleanOwnerName = String(ownerName || "").trim();
+
+  if (!cleanBusinessName || !cleanOwnerName || !/^\d{4}$/.test(String(pin || ""))) {
+    return c.json(
+      { error: "businessName, ownerName and a 4-digit pin are required" },
+      400
+    );
   }
   const db = await getDb(c.env.MONGODB_URI);
   let code = genBusinessCode();
   while (await db.collection("businesses").findOne({ code })) code = genBusinessCode();
 
   const biz = await db.collection("businesses").insertOne({
-    name: businessName,
+    name: cleanBusinessName,
     code,
     createdAt: new Date().toISOString(),
   });
   const pinHash = await bcrypt.hash(pin, 10);
   const user = await db.collection("users").insertOne({
     businessId: biz.insertedId.toString(),
-    name: ownerName,
+    name: cleanOwnerName,
     role: "CEO",
     pinHash,
     createdAt: new Date().toISOString(),
   });
 
   const token = await signToken(
-    { id: user.insertedId.toString(), businessId: biz.insertedId.toString(), role: "CEO", name: ownerName },
+    {
+      id: user.insertedId.toString(),
+      businessId: biz.insertedId.toString(),
+      role: "CEO",
+      name: cleanOwnerName,
+    },
     c.env.JWT_SECRET
   );
-  return c.json({ token, businessCode: code, user: { id: user.insertedId, name: ownerName, role: "CEO" } }, 201);
+
+  return c.json(
+    {
+      token,
+      businessCode: code,
+      user: {
+        id: user.insertedId.toString(),
+        name: cleanOwnerName,
+        role: "CEO",
+      },
+    },
+    201
+  );
 });
 
 // List the login "cards" (name/role only, no pin) for a business code.
 authRoutes.get("/users", async (c) => {
-  const code = c.req.query("businessCode");
-  if (!code) return c.json({ error: "businessCode query param required" }, 400);
+  const code = normalizeBusinessCode(c.req.query("businessCode"));
+  if (!code) {
+    return c.json({ error: "businessCode query param required" }, 400);
+  }
+
   const db = await getDb(c.env.MONGODB_URI);
-  const biz = await db.collection("businesses").findOne({ code: code.toUpperCase() });
+  const biz = await db.collection("businesses").findOne({ code });
   if (!biz) return c.json({ error: "Business not found" }, 404);
   const users = await db
     .collection("users")
@@ -60,11 +91,29 @@ authRoutes.get("/users", async (c) => {
 
 authRoutes.post("/login", async (c) => {
   const { businessCode, userId, pin } = await c.req.json();
-  if (!businessCode || !userId || !pin) return c.json({ error: "businessCode, userId and pin required" }, 400);
+  const code = normalizeBusinessCode(businessCode);
+  const id = String(userId || "").trim();
+
+  if (!code || !id || !pin) {
+    return c.json(
+      { error: "businessCode, userId and pin required" },
+      400
+    );
+  }
+
+  if (!ObjectId.isValid(id)) {
+    return c.json({ error: "Invalid userId" }, 400);
+  }
+
   const db = await getDb(c.env.MONGODB_URI);
-  const biz = await db.collection("businesses").findOne({ code: String(businessCode).toUpperCase() });
+  const biz = await db.collection("businesses").findOne({ code });
+
   if (!biz) return c.json({ error: "Business not found" }, 404);
-  const user = await db.collection("users").findOne({ _id: new ObjectId(userId), businessId: biz._id.toString() });
+
+  const user = await db.collection("users").findOne({
+    _id: new ObjectId(id),
+    businessId: biz._id.toString(),
+  });
   if (!user) return c.json({ error: "User not found" }, 404);
   const ok = await bcrypt.compare(pin, user.pinHash);
   if (!ok) return c.json({ error: "Incorrect PIN" }, 401);
@@ -73,7 +122,14 @@ authRoutes.post("/login", async (c) => {
     { id: user._id.toString(), businessId: biz._id.toString(), role: user.role, name: user.name },
     c.env.JWT_SECRET
   );
-  return c.json({ token, user: { id: user._id, name: user.name, role: user.role } });
+  return c.json({
+    token,
+    user: {
+      id: user._id.toString(),
+      name: user.name,
+      role: user.role,
+    },
+  });
 });
 
 // Add a new user (Manager/Staff) to the business. CEO or Manager only.

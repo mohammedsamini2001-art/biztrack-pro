@@ -69,7 +69,7 @@ productsRoutes.get("/:id", async (c) => {
   return c.json(doc);
 });
 
-productsRoutes.post("/", async (c) => {
+productsRoutes.post("/", requireRole("CEO", "Manager"), async (c) => {
   const user = c.get("user");
   const body: ProductInput = await c.req.json();
   const err = validate(body);
@@ -96,7 +96,7 @@ productsRoutes.post("/", async (c) => {
   return c.json({ ...doc, _id: result.insertedId }, 201);
 });
 
-productsRoutes.put("/:id", async (c) => {
+productsRoutes.put("/:id", requireRole("CEO", "Manager"), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const body: Partial<ProductInput> = await c.req.json();

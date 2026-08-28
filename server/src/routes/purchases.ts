@@ -63,7 +63,7 @@ purchasesRoutes.get("/:id", async (c) => {
 // Create a purchase order. If status is "received" (default), stock is
 // added immediately and — for Credit purchases — the supplier's balance
 // (amount owed to them) goes up by the purchase total.
-purchasesRoutes.post("/", async (c) => {
+purchasesRoutes.post("/", requireRole("CEO", "Manager"), async (c) => {
   const user = c.get("user");
   const body: PurchaseInput = await c.req.json();
   const err = validate(body);
@@ -109,7 +109,7 @@ purchasesRoutes.post("/", async (c) => {
 
 // Mark a pending purchase as received — adds stock and (for Credit) updates
 // the supplier balance, exactly once (guarded by the status check).
-purchasesRoutes.post("/:id/receive", async (c) => {
+purchasesRoutes.post("/:id/receive", requireRole("CEO", "Manager"), async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const db = await getDb(c.env.MONGODB_URI);

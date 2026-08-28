@@ -25,7 +25,7 @@ export function crudRouter(collectionName: string) {
     return c.json(docs);
   });
 
-  app.post("/", async (c) => {
+  app.post("/", requireRole("CEO", "Manager"), async (c) => {
     const user = c.get("user");
     const body = await c.req.json();
     delete body._id;
@@ -35,7 +35,7 @@ export function crudRouter(collectionName: string) {
     return c.json({ ...doc, _id: result.insertedId }, 201);
   });
 
-  app.put("/:id", async (c) => {
+  app.put("/:id", requireRole("CEO", "Manager"), async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
     const body = await c.req.json();

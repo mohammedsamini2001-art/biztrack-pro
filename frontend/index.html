@@ -23,6 +23,7 @@
     @media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.two{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
     @media(max-width:760px){.app{display:block}.sidebar{display:none;position:fixed;left:0;top:0;bottom:0;width:275px}.sidebar.open{display:block}.hamb{display:grid;place-items:center}.top{padding:10px 12px}.sub{display:none}.content{padding:14px 12px 84px}.hero{flex-direction:column;align-items:flex-start}.stats{grid-template-columns:1fr 1fr;gap:9px}.stat{padding:12px}.stat strong{font-size:20px}.three{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.bottom{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:#091323f2;border-top:1px solid var(--line);z-index:35;padding:5px 4px calc(5px + env(safe-area-inset-bottom));backdrop-filter:blur(14px)}.bottom button{border:0;background:none;color:var(--muted);font-size:10px;padding:4px}.bottom button.active{color:#fff}.bottom b{display:block;font-size:17px}.chartWrap{height:235px}.hidePhone{display:none}}
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="auth" class="auth">
@@ -186,7 +187,11 @@ function renderCustomers(){let rows=cache.customers;$("page-customers").innerHTM
 function renderPurchases(){let rows=cache.purchases;$("page-purchases").innerHTML=`<div class="hero"><div><h1>Purchases</h1><p>Purchase orders and stock receipts.</p></div><button class="btn primary" onclick="openPurchase()">＋ Purchase</button></div>${panel('Purchase orders',`<div class="tableWrap"><table class="table"><thead><tr><th>Date</th><th>Supplier</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.date||'')}</td><td>${esc(p.supplierName||'')}</td><td>${(p.items||[]).length}</td><td>${money(p.totalCost)}</td><td>${esc(p.paymentMethod||'')}</td><td><span class="pill">${esc(p.status||'received')}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty">No purchases yet.</td></tr>'}</tbody></table></div>`)}`}
 function renderSuppliers(){let rows=cache.suppliers;$("page-suppliers").innerHTML=`<div class="hero"><div><h1>Suppliers</h1><p>Supplier contacts and outstanding balances.</p></div><button class="btn primary" onclick="openSupplier()">＋ Supplier</button></div>${panel('Supplier directory',rows.length?rows.map(s=>`<div class="row"><div class="avatar">◫</div><div class="rowmain"><div class="rowtitle">${esc(s.name)}</div><div class="rowsub">${esc(s.phone||'')} · ${esc(s.category||'General')}</div></div><div class="amount">${money(s.balance||0)}</div></div>`).join(''):'<div class="empty">No suppliers returned by the API.</div>')}`}
 function renderEmployees(){let rows=cache.employees;$("page-employees").innerHTML=`<div class="hero"><div><h1>Employees</h1><p>Team records and operational roles.</p></div><button class="btn primary" onclick="openEmployee()">＋ Employee</button></div>${panel('Employees',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(e=>`<tr><td>${esc(e.name||e.fullName)}</td><td>${esc(e.role||'Staff')}</td><td>${esc(e.phone||'—')}</td><td><span class="pill good">${esc(e.status||'Active')}</span></td><td><button class="btn bad" onclick="deleteCrud('employees','${e._id?.$oid||e._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No employee records yet.</td></tr>'}</tbody></table></div>`)}`}
-function renderAnalytics(){let r=30,s=periodSales(r),rev=s.reduce((a,x)=>a+Number(x.totalPrice||0),0),profit=s.reduce((a,x)=>a+Number(x.profit||0),0);$("page-analytics").innerHTML=`<div class="hero"><div><h1>Analysis & Reports</h1><p>Compare 7 weeks, 14 weeks, 1 month and 1 year of business performance.</p></div><div class="actions"><button class="tab active" onclick="drawAnalytics(7)">7 weeks</button><button class="tab" onclick="drawAnalytics(14)">14 weeks</button><button class="tab" onclick="drawAnalytics(30)">1 month</button><button class="tab" onclick="drawAnalytics(365)">1 year</button><button class="btn" onclick="exportReport()">Export</button></div></div><div class="grid stats"><div class="card stat"><label>Revenue</label><strong id="aRev">${money(rev)}</strong></div><div class="card stat"><label>Profit</label><strong id="aProfit">${money(profit)}</strong></div><div class="card stat"><label>Average sale</label><strong id="aAvg">${money(s.length?rev/s.length:0)}</strong></div><div class="card stat"><label>Top product</label><strong id="aTop">${esc(topProductName(s)||'—')}</strong></div><div class="card stat"><label>Low stock</label><strong>${lowStock().length}</strong></div></div><div class="grid two" style="margin-top:14px"><div class="card"><div class="cardHead"><h2>Performance chart</h2><span class="mini">Live local/API data</span></div><div class="chartWrap"><canvas id="analyticsChart"></canvas></div></div><div class="card"><div class="cardHead"><h2>AI decision brief</h2></div><div class="cardBody insights">${buildInsights().map(i=>`<div class="insight"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join('')}</div></div></div><div class="grid three" style="margin-top:14px">${panel('Best sales',topProductsFor(s))}${panel('Top customers',topCustomers(s))}${panel('Payment mix',paymentMix(s))}</div><div class="card" style="margin-top:14px"><div class="cardHead"><h2>Full report</h2></div><div class="cardBody"><p class="mini">Includes sales, profit, expenses, inventory, purchasing, customers, employees and AI observations available from the connected data.</p><button class="btn primary" onclick="exportReport()">Generate report</button></div></div>`;drawAnalytics(30)}
+function renderAnalytics(){let r=30,s=periodSales(r),rev=s.reduce((a,x)=>a+Number(x.totalPrice||0),0),profit=s.reduce((a,x)=>a+Number(x.profit||0),0);$("page-analytics").innerHTML=`<div class="hero"><div><h1>Analysis & Reports</h1><p>Compare 7 weeks, 14 weeks, 1 month and 1 year of business performance.</p></div><div class="actions"><button class="tab active" onclick="drawAnalytics(7)">7 weeks</button><button class="tab" onclick="drawAnalytics(14)">14 weeks</button><button class="tab" onclick="drawAnalytics(30)">1 month</button><button class="tab" onclick="drawAnalytics(365)">1 year</button><button class="btn" onclick="exportReport()">Export</button></div></div><div class="grid stats"><div class="card stat"><label>Revenue</label><strong id="aRev">${money(rev)}</strong></div><div class="card stat"><label>Profit</label><strong id="aProfit">${money(profit)}</strong></div><div class="card stat"><label>Average sale</label><strong id="aAvg">${money(s.length?rev/s.length:0)}</strong></div><div class="card stat"><label>Top product</label><strong id="aTop">${esc(topProductName(s)||'—')}</strong></div><div class="card stat"><label>Low stock</label><strong>${lowStock().length}</strong></div></div><div class="grid two" style="margin-top:14px"><div class="card"><div class="cardHead"><h2>Performance chart</h2><span class="mini">Live local/API data</span></div><div class="chartWrap"><canvas id="analyticsChart"></canvas></div></div><div class="card"><div class="cardHead"><h2>AI decision brief</h2></div><div class="cardBody insights">${buildInsights().map(i=>`<div class="insight"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join('')}</div></div></div><div class="grid three" style="margin-top:14px">${panel('Best sales',topProductsFor(s))}${panel('Top customers',topCustomers(s))}${panel('Payment mix',paymentMix(s))}</div><div class="card" style="margin-top:14px"><div class="cardHead"><h2>Full report</h2></div><div class="cardBody"><p class="mini">Includes sales, profit, expenses, inventory, purchasing, customers, employees and AI observations available from the connected data.</p><div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn primary" onclick="exportReport('week')">📄 Weekly PDF</button>
+<button class="btn primary" onclick="exportReport('month')">📄 Monthly PDF</button>
+<button class="btn primary" onclick="exportReport('year')">📄 Yearly PDF</button>
+</div></div></div>`;drawAnalytics(30)}
 function topProductName(s){let m={};s.forEach(x=>{let n=x.productName||x.product;if(n)m[n]=(m[n]||0)+Number(x.totalPrice||0)});return Object.entries(m).sort((a,b)=>b[1]-a[1])[0]?.[0]}
 function topProductsFor(s){let m={};s.forEach(x=>{let n=x.productName||x.product;if(n)m[n]=(m[n]||0)+Number(x.totalPrice||0)});let a=Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,5);return a.length?a.map((x,i)=>`<div class="row"><div class="avatar">${i+1}</div><div class="rowmain"><div class="rowtitle">${esc(x[0])}</div></div><b>${money(x[1])}</b></div>`).join(''):'<div class="empty">No data.</div>'}
 function topCustomers(s){let m={};s.forEach(x=>{let n=x.customerName||x.customer;if(n)m[n]=(m[n]||0)+Number(x.totalPrice||0)});let a=Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,5);return a.length?a.map(x=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(x[0])}</div><div class="rowsub">Customer-linked sales</div></div><b>${money(x[1])}</b></div>`).join(''):'<div class="empty">Link sales to customers for this analysis.</div>'}
@@ -760,6 +765,113 @@ if(!currentUser||!token){$("auth").classList.remove('hidden');$("app").classList
 window.addEventListener('online',()=>syncAll());window.addEventListener('offline',()=>net(false,'Offline / Cached'));
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 async function resetSalesHistory(){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can clear sales history.');return;}if(!cache.sales.length){toast('There are no sales to clear.');return;}const ok=confirm('DANGER ZONE\\n\\nThis will permanently delete ALL sales for this business and restore their quantities to inventory.\\n\\nContinue?');if(!ok)return;const ok2=confirm('FINAL CONFIRMATION\\n\\nDelete all '+cache.sales.length+' sales?');if(!ok2)return;try{const result=await api('/api/sales/reset/all',{method:'DELETE'});cache.sales=[];saveCache();await syncAll();toast(`Sales cleared. ${result.deletedSales||0} sales deleted and ${result.restoredUnits||0} units restored.`);}catch(e){toast('Could not clear sales: '+e.message)}}
-function exportReport(){let t=cache.sales.reduce((a,s)=>a+Number(s.totalPrice||0),0),p=cache.sales.reduce((a,s)=>a+Number(s.profit||0),0);let text=`HIKMA BUSINESS OS REPORT\nGenerated: ${new Date().toLocaleString()}\nRevenue: ${money(t)}\nProfit: ${money(p)}\nSales: ${cache.sales.length}\nProducts: ${cache.products.length}\nCustomers: ${cache.customers.length}\nLow stock: ${lowStock().length}\n\nAI INSIGHTS\n`+buildInsights().map(i=>i.title+': '+i.text).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download='hikma-business-report.txt';a.click()}
+function exportReport(period="month"){
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    toast("PDF library is not loaded. Please refresh the app.");
+    return;
+  }
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+
+  const now=new Date();
+  let from=new Date(now);
+  let title="Monthly";
+
+  if(period==="week"){
+    from.setDate(now.getDate()-6);
+    title="Weekly";
+  }else if(period==="year"){
+    from=new Date(now.getFullYear(),0,1);
+    title="Yearly";
+  }else{
+    from=new Date(now.getFullYear(),now.getMonth(),1);
+  }
+
+  const sales=cache.sales.filter(s=>{
+    const d=new Date(s.date||s.createdAt||0);
+    return d>=from && d<=now;
+  });
+
+  const revenue=sales.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0);
+  const profit=sales.reduce((a,s)=>a+Number(s.profit||0),0);
+  const units=sales.reduce((a,s)=>a+Number(s.quantity||1),0);
+
+  const business=cache.settings?.name||cache.settings?.businessName||"Hikma Business";
+  const fmt=n=>Number(n||0).toLocaleString();
+
+  doc.setFontSize(18);
+  doc.text(business+" — Business Ledger",14,15);
+
+  doc.setFontSize(11);
+  doc.text(title+" Report",14,23);
+  doc.text("Period: "+from.toLocaleDateString()+" - "+now.toLocaleDateString(),14,30);
+  doc.text("Generated: "+now.toLocaleString(),14,37);
+
+  doc.setFontSize(12);
+  doc.text("SUMMARY",14,47);
+  doc.setFontSize(10);
+  doc.text("Revenue: KSh "+fmt(revenue),14,55);
+  doc.text("Profit: KSh "+fmt(profit),70,55);
+  doc.text("Transactions: "+sales.length,130,55);
+  doc.text("Units Sold: "+units,190,55);
+  doc.text("Products: "+cache.products.length,245,55);
+
+  let y=65;
+
+  doc.setFontSize(9);
+  doc.text("Date",14,y);
+  doc.text("Product",42,y);
+  doc.text("Qty",125,y);
+  doc.text("Payment",145,y);
+  doc.text("Amount",195,y);
+  doc.text("Profit",235,y);
+
+  y+=5;
+  doc.line(14,y,283,y);
+  y+=6;
+
+  sales.forEach((s,i)=>{
+    if(y>190){
+      doc.addPage();
+      y=15;
+    }
+
+    const date=String(s.date||s.createdAt||"").slice(0,10);
+    const product=String(s.productName||s.product||"Sale").slice(0,38);
+    const qty=String(s.quantity||1);
+    const payment=String(s.paymentMethod||"").slice(0,15);
+    const amount=fmt(s.totalPrice??s.total??0);
+    const prof=fmt(s.profit||0);
+
+    doc.text(date,14,y);
+    doc.text(product,42,y);
+    doc.text(qty,125,y);
+    doc.text(payment,145,y);
+    doc.text("KSh "+amount,195,y);
+    doc.text("KSh "+prof,235,y);
+
+    y+=6;
+  });
+
+  if(!sales.length){
+    doc.text("No sales recorded for this period.",14,y);
+    y+=10;
+  }
+
+  y+=5;
+  doc.setFontSize(11);
+  doc.text("BUSINESS SUMMARY",14,y);
+  y+=7;
+
+  doc.setFontSize(9);
+  doc.text("Customers: "+cache.customers.length,14,y);
+  doc.text("Inventory items: "+cache.products.length,80,y);
+  doc.text("Low stock items: "+lowStock().length,160,y);
+
+  const filename="hikma-ledger-"+period+"-"+now.toISOString().slice(0,10)+".pdf";
+  doc.save(filename);
+  toast("PDF ledger downloaded.");
+}
 </script>
 </body></html>

@@ -793,9 +793,13 @@ function exportReport(period="month"){
     return d>=from && d<=now;
   });
 
-  const revenue=sales.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0);
-  const profit=sales.reduce((a,s)=>a+Number(s.profit||0),0);
-  const units=sales.reduce((a,s)=>a+Number(s.quantity||1),0);
+  const saleAmount=s=>Number(s.totalPrice ?? s.total ?? s.amount ?? s.totalAmount ?? 0);
+  const saleProfit=s=>Number(s.profit ?? s.profitAmount ?? 0);
+  const saleQty=s=>Number(s.quantity ?? s.qty ?? 1);
+
+  const revenue=sales.reduce((a,s)=>a+saleAmount(s),0);
+  const profit=sales.reduce((a,s)=>a+saleProfit(s),0);
+  const units=sales.reduce((a,s)=>a+saleQty(s),0);
 
   const business=cache.settings?.name||cache.settings?.businessName||"Hikma Business";
   const fmt=n=>Number(n||0).toLocaleString();
@@ -839,10 +843,10 @@ function exportReport(period="month"){
 
     const date=String(s.date||s.createdAt||"").slice(0,10);
     const product=String(s.productName||s.product||"Sale").slice(0,38);
-    const qty=String(s.quantity||1);
-    const payment=String(s.paymentMethod||"").slice(0,15);
-    const amount=fmt(s.totalPrice??s.total??0);
-    const prof=fmt(s.profit||0);
+    const qty=String(saleQty(s));
+    const payment=String(s.paymentMethod||s.payment||"").slice(0,15);
+    const amount=fmt(saleAmount(s));
+    const prof=fmt(saleProfit(s));
 
     doc.text(date,14,y);
     doc.text(product,42,y);

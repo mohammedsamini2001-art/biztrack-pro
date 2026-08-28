@@ -127,8 +127,223 @@ function renderUsers(){let rows=cache.users;$("page-users").innerHTML=`<div clas
 function renderSettings(){$("page-settings").innerHTML=`<div class="hero"><div><h1>Settings</h1><p>Business connection and local-device controls.</p></div><button class="btn" onclick="logout()">Log out</button></div><div class="grid three"><div class="card"><div class="cardBody"><h2>API connection</h2><input id="apiInput" class="input" value="${esc(API)}"><button class="btn primary" style="margin-top:9px" onclick="saveApi()">Save & test</button><p id="apiMsg" class="mini"></p></div></div><div class="card"><div class="cardBody"><h2>Offline data</h2><p class="mini">${cache.products.length} products · ${cache.sales.length} sales · ${cache.customers.length} customers cached.</p><button class="btn" onclick="syncAll()">Sync now</button></div></div><div class="card"><div class="cardBody"><h2>Business</h2><p class="mini">${esc(cache.settings.name||cache.settings.businessName||'Your business')}</p><p class="mini">Current user: ${esc(currentUser?.name||'—')} (${esc(currentUser?.role||'—')})</p></div></div></div>`}
 function saveApi(){API=$("apiInput").value.trim().replace(/\/$/,"");localStorage.setItem("hikma_api_url",API);syncAll()}
 function openModal(title,body){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modal").classList.add('open')};function closeModal(){$("modal").classList.remove('open')};$("modal").addEventListener('click',e=>{if(e.target===$("modal"))closeModal()});
-function openSale(){openModal('Record sale',`<form class="formgrid" onsubmit="submitSale(event)"><div class="field"><label>Product name</label><input id="sp" class="input" required></div><div class="field"><label>Quantity</label><input id="sq" class="input" type="number" min="1" value="1" required></div><div class="field"><label>Total price</label><input id="st" class="input" type="number" min="0" step="0.01" required></div><div class="field"><label>Customer name</label><input id="sc" class="input" placeholder="Walk-in"></div><div class="field"><label>Payment method</label><select id="sm" class="input"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Card</option><option>Credit</option></select></div><div class="field"><label>Profit (optional)</label><input id="spr" class="input" type="number" step="0.01" value="0"></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Save sale</button></div></form>`)}
-async function submitSale(e){e.preventDefault();let x={productName:$("sp").value,quantity:Number($("sq").value),totalPrice:Number($("st").value),customerName:$("sc").value||"Walk-in",paymentMethod:$("sm").value,profit:Number($("spr").value||0),date:new Date().toISOString().slice(0,10)};try{let saved=await api('/api/sales',{method:'POST',body:JSON.stringify(x)});cache.sales.push(saved);saveCache();closeModal();renderAll();toast('Sale saved to API.')}catch(err){x.localOnly=true;cache.sales.push(x);saveCache();closeModal();renderAll();toast('API unavailable — saved locally.')}}
+async function openSale(){
+  try{
+    if (token){
+      const products = await api("/api/products");
+      cache.products = Array.isArray(products) ? products : [];
+      saveCache();
+    }
+  }catch(err){
+    console.warn("Could not refresh products before sale:", err);
+  }
+
+  const products = (cache.products || []).filter(
+    p => Number(p.stock || 0) > 0
+  );
+
+  openModal('Record sale',`
+    <form class="formgrid" onsubmit="submitSale(event)">
+      <div class="field" style="grid-column:1/-1">
+        <label>Product</label>
+        <select id="sp" class="input" required onchange="updateSaleCalculation()">
+          <option value="">Select product...</option>
+          ${products.map(p => {
+            const id = p._id?.$oid || p._id;
+            return `<option value="${esc(id)}">
+              ${esc(p.name)} — ${p.stock} ${esc(p.unit || 'units')} available
+            </option>`;
+          }).join('')}
+        </select>
+      </div>
+
+      <div id="saleProductInfo" class="mini" style="grid-column:1/-1">
+        Select a product to see its price and available stock.
+      </div>
+
+      <div class="field">
+        <label>Quantity</label>
+        <input id="sq" class="input" type="number" min="1" value="1"
+          required oninput="updateSaleCalculation()">
+      </div>
+
+      <div class="field">
+        <label>Unit selling price</label>
+        <input id="su" class="input" type="number" readonly>
+      </div>
+
+      <div class="field">
+        <label>Total price</label>
+        <input id="st" class="input" type="number" readonly>
+      </div>
+
+      <div class="field">
+        <label>Profit</label>
+        <input id="spr" class="input" type="number" readonly>
+      </div>
+
+      <div class="field">
+        <label>Customer name</label>
+        <input id="sc" class="input" placeholder="Walk-in">
+      </div>
+
+      <div class="field">
+        <label>Payment method</label>
+        <select id="sm" class="input">
+          <option>Cash</option>
+          <option>M-Pesa</option>
+          <option>Bank Transfer</option>
+          <option>Card</option>
+          <option>Credit</option>
+        </select>
+      </div>
+
+      <div id="saleTotalPreview"
+        style="grid-column:1/-1;padding:14px;border-radius:12px;background:var(--panel);border:1px solid var(--line)">
+        <b>Total: KSh 0.00</b>
+      </div>
+
+      <div style="grid-column:1/-1">
+        <button class="btn primary" style="width:100%" id="saveSaleBtn">
+          Save sale
+        </button>
+      </div>
+    </form>
+  `);
+
+  updateSaleCalculation();
+}
+
+function selectedSaleProduct(){
+  const id = $("sp")?.value;
+  if (!id) return null;
+
+  return (cache.products || []).find(
+    p => String(p._id?.$oid || p._id) === String(id)
+  ) || null;
+}
+
+function updateSaleCalculation(){
+  const p = selectedSaleProduct();
+  const qty = Math.max(1, Number($("sq")?.value || 1));
+
+  if (!p){
+    if ($("su")) $("su").value = "0";
+    if ($("st")) $("st").value = "0";
+    if ($("spr")) $("spr").value = "0";
+    if ($("saleProductInfo"))
+      $("saleProductInfo").textContent = "Select a product to see its price and available stock.";
+    if ($("saleTotalPreview"))
+      $("saleTotalPreview").innerHTML = "<b>Total: KSh 0.00</b>";
+    return;
+  }
+
+  const stock = Number(p.stock || 0);
+  const sellPrice = Number(p.sellPrice || 0);
+  const costPrice = Number(p.costPrice || 0);
+
+  const total = qty * sellPrice;
+  const profit = qty * (sellPrice - costPrice);
+
+  if ($("su")) $("su").value = sellPrice.toFixed(2);
+  if ($("st")) $("st").value = total.toFixed(2);
+  if ($("spr")) $("spr").value = profit.toFixed(2);
+
+  if ($("saleProductInfo")){
+    $("saleProductInfo").innerHTML =
+      `<b>${esc(p.name)}</b> · ${stock} ${esc(p.unit || "units")} available · Cost ${money(costPrice)} · Selling ${money(sellPrice)}`;
+  }
+
+  if ($("saleTotalPreview")){
+    $("saleTotalPreview").innerHTML =
+      `<b>Total: ${money(total)}</b> · Profit: ${money(profit)} · Remaining stock after sale: ${Math.max(0, stock - qty)} ${esc(p.unit || "units")}`;
+  }
+
+  const btn = $("saveSaleBtn");
+  if (btn){
+    btn.disabled = qty > stock;
+    btn.textContent = qty > stock
+      ? `Only ${stock} available`
+      : "Save sale";
+  }
+}
+
+async function submitSale(e){
+  e.preventDefault();
+
+  const p = selectedSaleProduct();
+  const quantity = Number($("sq").value || 0);
+
+  if (!p){
+    toast("Please select a product.");
+    return;
+  }
+
+  if (!Number.isInteger(quantity) || quantity <= 0){
+    toast("Enter a valid quantity.");
+    return;
+  }
+
+  const stock = Number(p.stock || 0);
+
+  if (quantity > stock){
+    toast(`Only ${stock} ${p.unit || "units"} available.`);
+    return;
+  }
+
+  const x = {
+    productId: String(p._id?.$oid || p._id),
+    quantity,
+    customerName: $("sc").value || "Walk-in",
+    paymentMethod: $("sm").value,
+    date: new Date().toISOString().slice(0,10)
+  };
+
+  const btn = $("saveSaleBtn");
+  if (btn){
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+  }
+
+  try{
+    const saved = await api("/api/sales", {
+      method: "POST",
+      body: JSON.stringify(x)
+    });
+
+    cache.sales.push(saved);
+
+    /*
+     * Update the local product immediately so the UI reflects
+     * the new stock before the next full sync.
+     */
+    const localProduct = (cache.products || []).find(
+      q => String(q._id?.$oid || q._id) === String(x.productId)
+    );
+
+    if (localProduct){
+      localProduct.stock = Number(saved.remainingStock ?? (localProduct.stock - quantity));
+    }
+
+    saveCache();
+    closeModal();
+
+    await syncAll();
+
+    toast(
+      `Sale saved. ${saved.productName}: ${quantity} sold. Stock remaining: ${saved.remainingStock}.`
+    );
+
+  }catch(err){
+    if (btn){
+      btn.disabled = false;
+      btn.textContent = "Save sale";
+    }
+
+    toast("Sale failed: " + err.message);
+  }
+}
+
 function openProduct(){openModal('Add product',`<form class="formgrid" onsubmit="submitProduct(event)"><div class="field"><label>Name</label><input id="pn" class="input" required></div><div class="field"><label>Category</label><input id="pcat" class="input" required value="General"></div><div class="field"><label>Unit</label><input id="punit" class="input" required value="pcs"></div><div class="field"><label>SKU / barcode</label><input id="psku" class="input"></div><div class="field"><label>Stock</label><input id="pstock" class="input" type="number" value="0"></div><div class="field"><label>Cost price</label><input id="pcost" class="input" type="number" step="0.01" value="0"></div><div class="field"><label>Selling price</label><input id="psell" class="input" type="number" step="0.01" value="0"></div><div class="field"><label>Reorder level</label><input id="preorder" class="input" type="number" value="5"></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Save product</button></div></form>`)}
 async function submitProduct(e){e.preventDefault();let x={name:$("pn").value,category:$("pcat").value,unit:$("punit").value,sku:$("psku").value||undefined,stock:Number($("pstock").value||0),costPrice:Number($("pcost").value||0),sellPrice:Number($("psell").value||0),reorderLevel:Number($("preorder").value||0)};try{let saved=await api('/api/products',{method:'POST',body:JSON.stringify(x)});cache.products.push(saved);saveCache();closeModal();renderAll();toast('Product saved to API.')}catch(err){toast('Could not save product: '+err.message)}}
 function openCustomer(){openModal('Add customer',`<form class="formgrid" onsubmit="submitCustomer(event)"><div class="field"><label>Name</label><input id="cn" class="input" required></div><div class="field"><label>Phone</label><input id="cp" class="input"></div><div class="field"><label>Email</label><input id="ce" class="input"></div><div class="field"><label>Address</label><input id="ca" class="input"></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Save customer</button></div></form>`)}

@@ -5,6 +5,8 @@ import { authRoutes } from "./routes/auth";
 import { dashboardRoutes } from "./routes/dashboard";
 import { productsRoutes } from "./routes/products";
 import { purchasesRoutes } from "./routes/purchases";
+
+import { salesRoutes } from "./routes/sales";
 import type { Env, AuthUser } from "./types";
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -54,7 +56,8 @@ app.route("/api/auth", authRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/products", productsRoutes);
 app.route("/api/purchases", purchasesRoutes);
-app.route("/api/sales", crudRouter("sales"));
+
+app.route("/api/sales", salesRoutes);
 app.route("/api/customers", crudRouter("customers"));
 app.route("/api/suppliers", crudRouter("suppliers"));
 app.route("/api/services", crudRouter("services"));

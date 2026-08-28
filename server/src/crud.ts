@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ObjectId } from "mongodb";
 import { getDb } from "./db";
-import { requireAuth } from "./auth";
+import { requireAuth, requireRole } from "./auth";
 import type { Env, AuthUser } from "./types";
 
 type AppEnv = { Bindings: Env; Variables: { user: AuthUser } };
@@ -52,7 +52,7 @@ export function crudRouter(collectionName: string) {
     return c.json(result);
   });
 
-  app.delete("/:id", async (c) => {
+  app.delete("/:id", requireRole("CEO", "Manager"), async (c) => {
     const user = c.get("user");
     const id = c.req.param("id");
     const db = await getDb(c.env.MONGODB_URI);

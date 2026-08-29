@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="Hikma Business OS — sales, inventory, CRM, purchasing and business intelligence.">
+  <title>Hikma Business OS</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#07111f;--panel:#0d192b;--panel2:#111f34;--line:#22334c;--text:#eff6ff;--muted:#91a4bd;--brand:#46e6c1;--blue:#61a4ff;--purple:#a78bfa;--good:#4ade80;--warn:#fbbf24;--bad:#fb7185;--shadow:0 20px 60px rgba(0,0,0,.28);--r:18px}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(1000px 500px at 15% -10%,#14325a 0,transparent 60%),var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    body{overflow-x:hidden}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}
+    .hidden{display:none!important}.app{min-height:100vh;display:grid;grid-template-columns:250px 1fr}.sidebar{position:sticky;top:0;height:100vh;padding:18px 14px;border-right:1px solid var(--line);background:#091423f0;backdrop-filter:blur(16px);z-index:40}.brand{display:flex;align-items:center;gap:10px;padding:7px 10px 20px}.logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,var(--brand),var(--blue));display:grid;place-items:center;color:#07111f;font-weight:1000}.brand b{font-size:18px}.brand small{display:block;color:var(--muted);font-size:10px}.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:var(--muted);padding:10px 11px;border-radius:11px;text-align:left;display:flex;align-items:center;gap:11px}.nav button:hover,.nav button.active{background:#17263c;color:#fff}.nav .ico{width:20px;text-align:center}.sidefoot{position:absolute;left:14px;right:14px;bottom:16px;padding:12px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}.statusline{display:flex;align-items:center;gap:7px}.dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 12px var(--good)}.dot.off{background:var(--warn);box-shadow:0 0 12px var(--warn)}
+    .main{min-width:0}.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 22px;background:#07111fe8;backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.topLeft{display:flex;align-items:center;gap:12px}.hamb{display:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:#fff}.title{font-weight:850;font-size:18px}.sub{font-size:11px;color:var(--muted)}.topRight{display:flex;align-items:center;gap:9px}.btn{border:1px solid var(--line);background:#12213a;color:#fff;border-radius:10px;padding:9px 12px;font-weight:750}.btn:hover{border-color:#355476}.btn.primary{border:0;background:linear-gradient(135deg,#16cfae,#5f9cff);color:#06111b}.btn.purple{border-color:#53417c;background:#201634;color:#e9ddff}.btn.bad{border-color:#61263b;background:#301522;color:#fecdd3}
+    .content{padding:23px;max-width:1600px;margin:auto}.page{display:none}.page.active{display:block}.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px}.hero h1{margin:0;font-size:clamp(24px,3vw,36px);letter-spacing:-.8px}.hero p{margin:5px 0 0;color:var(--muted)}.actions{display:flex;gap:8px;flex-wrap:wrap}
+    .grid{display:grid;gap:14px}.stats{grid-template-columns:repeat(5,minmax(0,1fr))}.card{background:linear-gradient(180deg,#101d31,#0c1728);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}.stat{padding:16px}.stat label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.stat strong{display:block;font-size:25px;margin:5px 0}.trend{font-size:11px;color:var(--good)}.two{grid-template-columns:minmax(0,1.65fr) minmax(300px,.95fr)}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.cardHead{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:15px 16px;border-bottom:1px solid var(--line)}.cardHead h2,.cardHead h3{font-size:14px;margin:0}.cardBody{padding:16px}.chartWrap{height:290px;padding:10px 13px 16px}.mini{font-size:11px;color:var(--muted)}.tabs{display:flex;gap:5px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#0b1728;color:var(--muted);padding:7px 9px;border-radius:9px}.tab.active{background:#1a2a43;color:#fff;border-color:#3a5275}
+    .insights{display:grid;gap:9px}.insight{padding:11px;border:1px solid var(--line);border-radius:11px;background:#0a1627}.insight b{display:block;margin-bottom:3px}.list{display:grid}.row{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1b2a40}.row:last-child{border-bottom:0}.rowmain{min-width:0;flex:1}.rowtitle{font-weight:740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rowsub{font-size:11px;color:var(--muted)}.amount{font-weight:820;white-space:nowrap}.avatar{width:32px;height:32px;border-radius:10px;background:#172941;display:grid;place-items:center;color:#c7d2fe;font-weight:850;flex:0 0 auto}.pill{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#16243a;color:#bdd0e9;font-size:11px}.pill.good{border:1px solid #245a47;color:#b7f7d2}.pill.warn{border:1px solid #645217;color:#fde68a}.pill.bad{border:1px solid #63263b;color:#fecdd3}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}.input{width:100%;background:#091527;color:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px;outline:none}.input:focus{border-color:var(--brand)}.field{display:grid;gap:5px}.field label{font-size:11px;color:var(--muted)}.tableWrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:720px}.table th,.table td{text-align:left;padding:11px 9px;border-bottom:1px solid var(--line)}.table th{font-size:11px;color:var(--muted);font-weight:700}.modal{position:fixed;inset:0;display:none;place-items:center;padding:15px;background:#000a;backdrop-filter:blur(7px);z-index:100}.modal.open{display:grid}.dialog{width:min(720px,100%);max-height:90vh;overflow:auto;background:#0d192b;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.dialogHead{display:flex;justify-content:space-between;align-items:center;padding:15px 17px;border-bottom:1px solid var(--line)}.dialogBody{padding:17px}.close{border:0;background:transparent;color:var(--muted);font-size:22px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.empty{padding:38px;text-align:center;color:var(--muted)}.bottom{display:none}
+    .auth{position:fixed;inset:0;background:radial-gradient(750px 400px at 30% 15%,#11325d 0,transparent 62%),#07111f;display:grid;place-items:center;padding:16px;z-index:200}.authCard{width:min(420px,100%);background:#0c192bde;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:26px}.authLogo{text-align:center}.authLogo .logo{margin:auto}.authLogo h1{margin:10px 0 3px;font-size:26px}.authLogo p{margin:0 0 20px;color:var(--muted)}.usercards{display:grid;gap:8px;max-height:220px;overflow:auto;margin:12px 0}.usercard{border:1px solid var(--line);background:#0a1526;padding:11px;border-radius:11px;display:flex;align-items:center;gap:10px;text-align:left;color:#fff}.usercard.selected{border-color:var(--brand);background:#102e2a}.pin{font-size:19px;letter-spacing:.45em;text-align:center}.authErr{min-height:18px;color:#fecdd3;font-size:12px;text-align:center;margin-top:8px}
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.two{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
+    @media(max-width:760px){.app{display:block}.sidebar{display:none;position:fixed;left:0;top:0;bottom:0;width:275px}.sidebar.open{display:block}.hamb{display:grid;place-items:center}.top{padding:10px 12px}.sub{display:none}.content{padding:14px 12px 84px}.hero{flex-direction:column;align-items:flex-start}.stats{grid-template-columns:1fr 1fr;gap:9px}.stat{padding:12px}.stat strong{font-size:20px}.three{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.bottom{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:#091323f2;border-top:1px solid var(--line);z-index:35;padding:5px 4px calc(5px + env(safe-area-inset-bottom));backdrop-filter:blur(14px)}.bottom button{border:0;background:none;color:var(--muted);font-size:10px;padding:4px}.bottom button.active{color:#fff}.bottom b{display:block;font-size:17px}.chartWrap{height:235px}.hidePhone{display:none}}
+  </style>
+</head>
+<body>
+<div id="auth" class="auth">
+  <div class="authCard">
+    <div class="authLogo"><div class="logo">H</div><h1>Hikma Business OS</h1><p>Run your business from one workspace.</p></div>
+    <div id="codeStep">
+      <div class="field"><label>Business code</label><input id="businessCode" class="input" maxlength="10" placeholder="e.g. BWIBOC"></div>
+      <button class="btn primary" style="width:100%;margin-top:11px" onclick="lookupBusiness()">Continue</button>
+    </div>
+    <div id="userStep" class="hidden">
+      <div class="mini" id="businessName" style="margin-bottom:8px"></div>
+      <div id="userCards" class="usercards"></div>
+      <div class="field"><label>4-digit PIN</label><input id="pin" class="input pin" inputmode="numeric" maxlength="4" type="password" placeholder="••••"></div>
+      <button class="btn primary" style="width:100%;margin-top:11px" onclick="login()">Log in</button>
+      <button class="btn" style="width:100%;margin-top:8px" onclick="backToCode()">← Different business</button>
+    </div>
+    <div id="authErr" class="authErr"></div>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <aside id="sidebar" class="sidebar">
+    <div class="brand"><div class="logo">H</div><div><b>Hikma</b><small>BUSINESS OS</small></div></div>
+    <div class="nav">
+      <button data-page="dashboard">⌂ <span>Dashboard</span></button><button data-page="sales">◉ <span>Sales / POS</span></button><button data-page="inventory">▣ <span>Inventory</span></button><button data-page="customers">♙ <span>CRM / Customers</span></button><button data-page="purchases">⇩ <span>Purchases</span></button><button data-page="suppliers">◫ <span>Suppliers</span></button><button data-page="employees">♟ <span>Employees</span></button><button data-page="analytics">▥ <span>Analysis & Reports</span></button><button data-page="scan">▦ <span>Scan / QR</span></button><button data-page="users">☻ <span>Users</span></button><button data-page="settings">⚙ <span>Settings</span></button>
+    </div>
+    <div class="sidefoot"><div class="statusline"><span id="sideDot" class="dot"></span><span id="sideStatus">Online</span></div><div style="margin-top:6px">Offline cache is enabled for supported local data.</div></div>
+  </aside>
+  <main class="main">
+    <header class="top"><div class="topLeft"><button id="hamb" class="hamb">☰</button><div><div id="title" class="title">Dashboard</div><div id="subtitle" class="sub">Business overview</div></div></div><div class="topRight"><button class="btn purple hidePhone" onclick="openAi()">✦ AI</button><button class="btn hidePhone" onclick="go('scan')">⌁ Scan</button><button class="btn primary" onclick="openSale()">＋ Sale</button></div></header>
+    <div class="content">
+      <section id="page-dashboard" class="page active"></section>
+      <section id="page-sales" class="page"></section>
+      <section id="page-inventory" class="page"></section>
+      <section id="page-customers" class="page"></section>
+      <section id="page-purchases" class="page"></section>
+      <section id="page-suppliers" class="page"></section>
+      <section id="page-employees" class="page"></section>
+      <section id="page-analytics" class="page"></section>
+      <section id="page-scan" class="page"></section>
+      <section id="page-users" class="page"></section>
+      <section id="page-settings" class="page"></section>
+    </div>
+  </main>
+</div>
+<nav id="bottom" class="bottom"><button data-page="dashboard"><b>⌂</b>Home</button><button data-page="sales"><b>◉</b>Sales</button><button data-page="inventory"><b>▣</b>Stock</button><button data-page="analytics"><b>▥</b>Reports</button></nav>
+<div id="modal" class="modal"><div class="dialog"><div class="dialogHead"><b id="modalTitle">Hikma</b><button class="close" onclick="closeModal()">×</button></div><div id="modalBody" class="dialogBody"></div></div></div>
+<script>
+const API_DEFAULT="https://biztrack-pro-api.onrender.com";
+const API=API_DEFAULT;
+let token=localStorage.getItem("hikma_token")||"";
+let currentUser=JSON.parse(localStorage.getItem("hikma_user")||"null");
+let businessCode=localStorage.getItem("hikma_business_code")||"";
+let cache=JSON.parse(localStorage.getItem("hikma_cache")||'{"settings":{},"products":[],"sales":[],"customers":[],"purchases":[],"suppliers":[],"employees":[],"expenses":[],"users":[]}');
+let selectedUserId=null, chart1=null, chart2=null, scannerStream=null;
+const $=id=>document.getElementById(id), money=n=>"KSh "+Number(n||0).toLocaleString("en-KE",{maximumFractionDigits:0});
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+function saveCache(){localStorage.setItem("hikma_cache",JSON.stringify(cache))}
+function net(ok,msg){$("sideDot").classList.toggle("off",!ok);$("sideStatus").textContent=msg|| (ok?"Online":"Offline");}
+async function api(path,opts={}){const headers={"Content-Type":"application/json",...(opts.headers||{})};if(token)headers.Authorization="Bearer "+token;let res=await fetch(API+path,{...opts,headers});let txt=await res.text();let body;try{body=txt?JSON.parse(txt):{}}catch{body={error:txt}}if(!res.ok)throw new Error(body.error||body.message||`HTTP ${res.status}`);return body}
+async function lookupBusiness(){let code=$("businessCode").value.trim().toUpperCase();if(!code)return;$("authErr").textContent="";try{let r=await apiPublic("/api/auth/users?businessCode="+encodeURIComponent(code));businessCode=code;selectedUserId=null;$("businessName").textContent=r.business.name+" · "+r.business.code;$("userCards").innerHTML=r.users.map(u=>`<button class="usercard" onclick="selectUser('${u._id?.$oid||u._id}','${esc(u.name)}')"><div class="avatar">${esc((u.name||"?").slice(0,1).toUpperCase())}</div><div><b>${esc(u.name)}</b><div class="mini">${esc(u.role)}</div></div></button>`).join("");$("codeStep").classList.add("hidden");$("userStep").classList.remove("hidden")}catch(e){$("authErr").textContent=e.message}}
+async function apiPublic(path,opts={}){let res=await fetch(API+path,{...opts,headers:{Accept:"application/json",...(opts.headers||{})}});let txt=await res.text();let body;try{body=txt?JSON.parse(txt):{}}catch{body={}}if(!res.ok)throw new Error(body.error||`HTTP ${res.status}`);return body}
+function selectUser(id,name){selectedUserId=id;document.querySelectorAll(".usercard").forEach(b=>b.classList.toggle("selected",b.textContent.includes(name)));$("pin").focus()}
+function backToCode(){$("userStep").classList.add("hidden");$("codeStep").classList.remove("hidden");$("authErr").textContent=""}
+async function login(){let pin=$("pin").value.trim();if(!selectedUserId||!/^\d{4}$/.test(pin)){ $("authErr").textContent="Select a user and enter a 4-digit PIN.";return }try{let r=await apiPublic("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessCode,userId:selectedUserId,pin})});token=r.token;currentUser=r.user;localStorage.setItem("hikma_token",token);localStorage.setItem("hikma_user",JSON.stringify(currentUser));localStorage.setItem("hikma_business_code",businessCode);$("auth").classList.add("hidden");$("app").classList.remove("hidden");renderAll();syncAll()}catch(e){$("authErr").textContent=e.message}}
+function logout(){token="";currentUser=null;localStorage.removeItem("hikma_token");localStorage.removeItem("hikma_user");location.reload()}
+const navLabels={dashboard:["Dashboard","Executive business overview"],sales:["Sales / POS","Transactions and daily selling"],inventory:["Inventory","Products, stock and reorder levels"],customers:["CRM / Customers","Customer relationships and balances"],purchases:["Purchases","Incoming stock and purchase orders"],suppliers:["Suppliers","Supplier relationships and balances"],employees:["Employees","Team records and roles"],analytics:["Analysis & Reports","Trends, leaders, profitability and insights"],scan:["Scan / QR","Barcode, QR and document tools"],users:["Users","Access and account controls"],settings:["Settings","Business configuration and connection"]};
+function go(page){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));$("page-"+page).classList.add('active');document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===page));$("title").textContent=navLabels[page][0];$("subtitle").textContent=navLabels[page][1];$("sidebar").classList.remove('open');({dashboard:renderDashboard,sales:renderSales,inventory:renderInventory,customers:renderCustomers,purchases:renderPurchases,suppliers:renderSuppliers,employees:renderEmployees,analytics:renderAnalytics,scan:renderScan,users:renderUsers,settings:renderSettings}[page]||renderDashboard)()}
+document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));$("hamb").onclick=()=>$("sidebar").classList.toggle('open');
+function sumSales(){return cache.sales.reduce((a,s)=>a+Number(s.totalPrice||s.total||0),0)}
+function sumCashSales(){return cache.sales.reduce((a,s)=>a+Number(s.cashAmount??(String(s.paymentMethod||"").toLowerCase()==="cash"?(s.totalPrice??s.total??0):0)),0)}
+function sumPaymentSales(method){return cache.sales.reduce((a,s)=>a+(String(s.paymentMethod||"").toLowerCase()===String(method).toLowerCase()?Number(s.paymentAmount??s.totalPrice??s.total??0):0),0)}
+function totalUnits(){return cache.products.reduce((a,p)=>a+Number(p.stock||0),0)}
+function lowStock(){return cache.products.filter(p=>Number(p.stock||0)<=Number(p.reorderLevel||0))}
+function days(n){let d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
+function periodSales(range){let from=range===365?days(365):days(range);return cache.sales.filter(s=>String(s.date||"")>=from)}
+function renderAll(){renderDashboard();renderSales();renderInventory();renderCustomers();renderPurchases();renderSuppliers();renderEmployees();renderAnalytics();renderScan();renderUsers();renderSettings();}
+function renderDashboard(){let today=new Date().toISOString().slice(0,10),t=cache.sales.filter(s=>s.date===today),month=periodSales(30),expenses=(cache.expenses||[]).filter(e=>String(e.date||"")>=days(30)).reduce((a,e)=>a+Number(e.amount||0),0);$("page-dashboard").innerHTML=`<div class="hero"><div><h1>Good business starts with visibility.</h1><p>${esc(cache.settings.name||cache.settings.businessName||"Your business")} — everything important in one place.</p></div><div class="actions"><button class="btn" onclick="go('analytics')">View analysis →</button><button class="btn primary" onclick="openSale()">＋ Record sale</button></div></div><div class="grid stats"><div class="card stat"><label>Today revenue</label><strong>${money(t.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">${t.length} transactions</span></div><div class="card stat"><label>30-day revenue</label><strong>${money(month.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">All payment methods</span></div><div class="card stat"><label>Cash received</label><strong>${money(t.reduce((a,s)=>a+Number(s.cashAmount??(String(s.paymentMethod||"").toLowerCase()==="cash"?(s.totalPrice??s.total??0):0)),0))}</strong><span class="trend">Cash payments today</span></div><div class="card stat"><label>Profit</label><strong>${money(month.reduce((a,s)=>a+Number(s.profit||0),0))}</strong><span class="trend">Before expenses</span></div><div class="card stat"><label>Stock value</label><strong>${money(cache.products.reduce((a,p)=>a+Number(p.stock||0)*Number(p.costPrice||0),0))}</strong><span>${totalUnits()} units</span></div><div class="card stat"><label>Customers</label><strong>${cache.customers.length}</strong><span>CRM records</span></div></div><div class="grid two" style="margin-top:14px"><div class="card"><div class="cardHead"><h2>Sales trend</h2><div class="tabs"><button class="tab active" onclick="drawDashboard(30)">1 month</button><button class="tab" onclick="drawDashboard(7)">7 days</button><button class="tab" onclick="drawDashboard(14)">14 days</button><button class="tab" onclick="drawDashboard(365)">1 year</button></div></div><div class="chartWrap"><canvas id="dashChart"></canvas></div></div><div class="card"><div class="cardHead"><h2>AI business pulse</h2><span class="pill">Data-based</span></div><div class="cardBody insights">${buildInsights().map(i=>`<div class="insight"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join('')}</div></div></div><div class="grid three" style="margin-top:14px">${panel('Best sellers',topProducts())}${panel('Stock alerts',stockAlerts())}${panel('Recent sales',recentSales())}</div>`;drawDashboard(30)}
+function panel(title,body){return `<div class="card"><div class="cardHead"><h2>${title}</h2></div><div class="cardBody">${body||'<div class="empty">No data yet.</div>'}</div></div>`}
+function chartData(range){let n=range===365?12:range===30?10:range;let out=[];for(let i=n-1;i>=0;i--){let d=new Date();if(range===365)d.setMonth(d.getMonth()-i);else d.setDate(d.getDate()-i);let k=range===365?d.toISOString().slice(0,7):d.toISOString().slice(0,10);let v=cache.sales.filter(s=>String(s.date||"").startsWith(k)).reduce((a,s)=>a+Number(s.totalPrice||0),0);out.push({k,v})}return out}
+function drawDashboard(range=30){if(!window.Chart)return;let el=$("dashChart");if(!el)return;let d=chartData(range);chart1?.destroy();chart1=new Chart(el,{type:'line',data:{labels:d.map(x=>x.k),datasets:[{label:'Revenue',data:d.map(x=>x.v),borderColor:'#46e6c1',backgroundColor:'rgba(70,230,193,.12)',fill:true,tension:.35,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#91a4bd'}}},scales:{x:{ticks:{color:'#91a4bd'},grid:{color:'rgba(34,51,76,.25)'}},y:{ticks:{color:'#91a4bd',callback:v=>'KSh '+Number(v).toLocaleString()},grid:{color:'rgba(34,51,76,.25)'}}}}})}
+function topProducts(){let m={};cache.sales.forEach(s=>{let n=s.productName||s.product||'Sale';m[n]=(m[n]||0)+Number(s.totalPrice||0)});let a=Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,5);return a.length?a.map((x,i)=>`<div class="row"><div class="avatar">${i+1}</div><div class="rowmain"><div class="rowtitle">${esc(x[0])}</div><div class="rowsub">Recorded sales</div></div><div class="amount">${money(x[1])}</div></div>`).join(''):'<div class="empty">No product-linked sales yet.</div>'}
+function stockAlerts(){let a=lowStock().slice(0,6);return a.length?a.map(p=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(p.name)}</div><div class="rowsub">${p.stock} ${esc(p.unit||'units')} remaining</div></div><span class="pill ${p.stock<=0?'bad':'warn'}">${p.stock<=0?'Out':'Low'}</span></div>`).join(''):'<div class="empty">Inventory looks healthy.</div>'}
+function recentSales(){let a=[...cache.sales].reverse().slice(0,5);return a.length?a.map(s=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(s.productName||s.product||'Sale')}</div><div class="rowsub">${esc(s.date||'')}</div></div><div class="amount">${money(s.totalPrice||s.total)}</div></div>`).join(''):'<div class="empty">No sales yet.</div>'}
+function buildInsights(){let revenue=sumSales(),profit=cache.sales.reduce((a,s)=>a+Number(s.profit||0),0),low=lowStock(),best=Object.entries(cache.sales.reduce((m,s)=>{let n=s.productName||s.product; if(n)m[n]=(m[n]||0)+Number(s.totalPrice||0);return m},{})).sort((a,b)=>b[1]-a[1])[0];return[{title:'Revenue snapshot',text:`Hikma has recorded ${money(revenue)} across ${cache.sales.length} sales.`},{title:'Profit watch',text:profit>0?`Recorded sales carry ${money(profit)} in profit before expenses.`:'Profit data is not available yet; record product costs to improve the analysis.'},{title:'Inventory action',text:low.length?`${low.length} product(s) are at or below their reorder level.`:'No products are currently below their reorder level.'},{title:'Best seller',text:best?`${best[0]} is leading recorded sales at ${money(best[1])}.`:'Record product-linked sales to identify the best seller.'}]}
+function renderSales(){
+  let rows=[...cache.sales].reverse();
+
+  $("page-sales").innerHTML=`
+    <div class="hero">
+      <div>
+        <h1>Sales / POS</h1>
+        <p>Transactions, customers and payment records.</p>
+      </div>
+      <button class="btn primary" onclick="openSale()">＋ Record sale</button>
+    </div>
+
+    ${panel('Sales ledger',`
+      <div class="tableWrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Customer</th>
+              <th>Payment</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(s=>{
+              let id=s._id?.$oid||s._id;
+              return `
+                <tr>
+                  <td>${esc(s.date||'')}</td>
+                  <td>${esc(s.productName||s.product||'—')}</td>
+                  <td>${s.quantity||s.qty||1}</td>
+                  <td>${esc(s.customerName||s.customer||'Walk-in')}</td>
+                  <td>${esc(s.paymentMethod||s.payment||'—')}</td>
+                  <td><b>${money(s.totalPrice??s.total??0)}</b></td>
+                  <td>
+                    ${id
+                      ? `<button class="btn bad" onclick="deleteSale('${esc(id)}')">Delete</button>`
+                      : '—'}
+                  </td>
+                </tr>`;
+            }).join('')||'<tr><td colspan="7" class="empty">No sales yet.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `)}
+  `;
+}
+
+function renderInventory(){let rows=cache.products;$("page-inventory").innerHTML=`<div class="hero"><div><h1>Inventory</h1><p>Products, variants, stock, prices and reorder levels.</p></div><button class="btn primary" onclick="openProduct()">＋ Add product</button></div>${panel('Product catalog',`<div class="tableWrap"><table class="table"><thead><tr><th>Product</th><th>Category</th><th>SKU</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.category)}</td><td>${esc(p.sku||'—')}</td><td>${money(p.sellPrice||0)}</td><td>${p.stock}</td><td><span class="pill ${p.stock<=p.reorderLevel?'warn':'good'}">${p.stock<=p.reorderLevel?'Low stock':'Healthy'}</span></td><td><button class="btn bad" onclick="deleteProduct('${p._id?.$oid||p._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No products yet.</td></tr>'}</tbody></table></div>`)}`}
+function renderCustomers(){let rows=cache.customers;$("page-customers").innerHTML=`<div class="hero"><div><h1>CRM / Customers</h1><p>Contacts, loyalty, balances and history.</p></div><button class="btn primary" onclick="openCustomer()">＋ Customer</button></div>${panel('Customers',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Loyalty</th><th>Balance</th><th></th></tr></thead><tbody>${rows.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.phone||'—')}</td><td>${esc(c.email||'—')}</td><td>${c.loyalty||0}</td><td>${money(c.balance||0)}</td><td><button class="btn bad" onclick="deleteCrud('customers','${c._id?.$oid||c._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">No customers yet.</td></tr>'}</tbody></table></div>`)}`}
+function renderPurchases(){let rows=cache.purchases;$("page-purchases").innerHTML=`<div class="hero"><div><h1>Purchases</h1><p>Purchase orders and stock receipts.</p></div><button class="btn primary" onclick="openPurchase()">＋ Purchase</button></div>${panel('Purchase orders',`<div class="tableWrap"><table class="table"><thead><tr><th>Date</th><th>Supplier</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.date||'')}</td><td>${esc(p.supplierName||'')}</td><td>${(p.items||[]).length}</td><td>${money(p.totalCost)}</td><td>${esc(p.paymentMethod||'')}</td><td><span class="pill">${esc(p.status||'received')}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty">No purchases yet.</td></tr>'}</tbody></table></div>`)}`}
+function renderSuppliers(){let rows=cache.suppliers;$("page-suppliers").innerHTML=`<div class="hero"><div><h1>Suppliers</h1><p>Supplier contacts and outstanding balances.</p></div><button class="btn primary" onclick="openSupplier()">＋ Supplier</button></div>${panel('Supplier directory',rows.length?rows.map(s=>`<div class="row"><div class="avatar">◫</div><div class="rowmain"><div class="rowtitle">${esc(s.name)}</div><div class="rowsub">${esc(s.phone||'')} · ${esc(s.category||'General')}</div></div><div class="amount">${money(s.balance||0)}</div></div>`).join(''):'<div class="empty">No suppliers returned by the API.</div>')}`}
+function renderEmployees(){let rows=cache.employees;$("page-employees").innerHTML=`<div class="hero"><div><h1>Employees</h1><p>Team records and operational roles.</p></div><button class="btn primary" onclick="openEmployee()">＋ Employee</button></div>${panel('Employees',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(e=>`<tr><td>${esc(e.name||e.fullName)}</td><td>${esc(e.role||'Staff')}</td><td>${esc(e.phone||'—')}</td><td><span class="pill good">${esc(e.status||'Active')}</span></td><td><button class="btn bad" onclick="deleteCrud('employees','${e._id?.$oid||e._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No employee records yet.</td></tr>'}</tbody></table></div>`)}`}
+function renderAnalytics(){let r=30,s=periodSales(r),rev=s.reduce((a,x)=>a+Number(x.totalPrice||0),0),profit=s.reduce((a,x)=>a+Number(x.profit||0),0);$("page-analytics").innerHTML=`<div class="hero"><div><h1>Analysis & Reports</h1><p>Compare 7 weeks, 14 weeks, 1 month and 1 year of business performance.</p></div><div class="actions"><button class="tab active" onclick="drawAnalytics(7)">7 weeks</button><button class="tab" onclick="drawAnalytics(14)">14 weeks</button><button class="tab" onclick="drawAnalytics(30)">1 month</button><button class="tab" onclick="drawAnalytics(365)">1 year</button><button class="btn" onclick="exportReport()">Export</button></div></div><div class="grid stats"><div class="card stat"><label>Revenue</label><strong id="aRev">${money(rev)}</strong></div><div class="card stat"><label>Profit</label><strong id="aProfit">${money(profit)}</strong></div><div class="card stat"><label>Average sale</label><strong id="aAvg">${money(s.length?rev/s.length:0)}</strong></div><div class="card stat"><label>Top product</label><strong id="aTop">${esc(topProductName(s)||'—')}</strong></div><div class="card stat"><label>Low stock</label><strong>${lowStock().length}</strong></div></div><div class="grid two" style="margin-top:14px"><div class="card"><div class="cardHead"><h2>Performance chart</h2><span class="mini">Live local/API data</span></div><div class="chartWrap"><canvas id="analyticsChart"></canvas></div></div><div class="card"><div class="cardHead"><h2>AI decision brief</h2></div><div class="cardBody insights">${buildInsights().map(i=>`<div class="insight"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join('')}</div></div></div><div class="grid three" style="margin-top:14px">${panel('Best sales',topProductsFor(s))}${panel('Top customers',topCustomers(s))}${panel('Payment mix',paymentMix(s))}</div><div class="card" style="margin-top:14px"><div class="cardHead"><h2>Full report</h2></div><div class="cardBody"><p class="mini">Includes sales, profit, expenses, inventory, purchasing, customers, employees and AI observations available from the connected data.</p><button class="btn primary" onclick="exportReport()">Generate report</button></div></div>`;drawAnalytics(30)}
+function topProductName(s){let m={};s.forEach(x=>{let n=x.productName||x.product;if(n)m[n]=(m[n]||0)+Number(x.totalPrice||0)});return Object.entries(m).sort((a,b)=>b[1]-a[1])[0]?.[0]}
+function topProductsFor(s){let m={};s.forEach(x=>{let n=x.productName||x.product;if(n)m[n]=(m[n]||0)+Number(x.totalPrice||0)});let a=Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,5);return a.length?a.map((x,i)=>`<div class="row"><div class="avatar">${i+1}</div><div class="rowmain"><div class="rowtitle">${esc(x[0])}</div></div><b>${money(x[1])}</b></div>`).join(''):'<div class="empty">No data.</div>'}
+function topCustomers(s){let m={};s.forEach(x=>{let n=x.customerName||x.customer;if(n)m[n]=(m[n]||0)+Number(x.totalPrice||0)});let a=Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,5);return a.length?a.map(x=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(x[0])}</div><div class="rowsub">Customer-linked sales</div></div><b>${money(x[1])}</b></div>`).join(''):'<div class="empty">Link sales to customers for this analysis.</div>'}
+function paymentMix(s){let m={};s.forEach(x=>{let n=x.paymentMethod||'Unknown';m[n]=(m[n]||0)+Number(x.paymentAmount??x.totalPrice??x.total??0)});let a=Object.entries(m).sort((x,y)=>y[1]-x[1]);return a.length?a.map(x=>`<div class="row"><span>${esc(x[0])}</span><b>${money(x[1])}</b></div>`).join(''):'<div class="empty">No payment data.</div>'}
+function drawAnalytics(range){if(!window.Chart)return;let d=chartData(range===7?49:range===14?98:range);let el=$("analyticsChart");if(!el)return;chart2?.destroy();chart2=new Chart(el,{type:'line',data:{labels:d.map(x=>x.k),datasets:[{label:'Revenue',data:d.map(x=>x.v),borderColor:'#61a4ff',backgroundColor:'rgba(97,164,255,.1)',fill:true,tension:.35,pointRadius:range>30?1.5:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#91a4bd'}}},scales:{x:{ticks:{color:'#91a4bd',maxTicksLimit:12},grid:{display:false}},y:{ticks:{color:'#91a4bd',callback:v=>'KSh '+Number(v).toLocaleString()},grid:{color:'rgba(34,51,76,.25)'}}}}})}
+function renderScan(){$("page-scan").innerHTML=`<div class="hero"><div><h1>Scan / QR</h1><p>Use the phone camera when supported, or find products by SKU/barcode.</p></div></div><div class="grid two"><div class="card"><div class="cardHead"><h2>Camera scanner</h2></div><div class="cardBody"><video id="video" playsinline muted style="width:100%;aspect-ratio:16/9;background:#050b14;border-radius:12px"></video><div class="actions" style="margin-top:9px"><button class="btn primary" onclick="startScanner()">Start camera</button><button class="btn" onclick="stopScanner()">Stop</button></div><p id="scanMsg" class="mini">Browser barcode detection is used when available.</p></div></div><div class="card"><div class="cardHead"><h2>Product lookup</h2></div><div class="cardBody"><input id="lookup" class="input" placeholder="SKU / barcode"><button class="btn primary" style="margin-top:9px" onclick="lookupProduct()">Find product</button><div id="lookupResult" class="insights" style="margin-top:12px"></div><div style="margin-top:20px;text-align:center"><span class="pill">QR payload</span><div id="qr" style="width:170px;height:170px;background:#fff;margin:12px auto;display:grid;grid-template-columns:repeat(12,1fr);gap:2px;padding:10px"></div><div class="mini">Business QR preview for sharing a business identifier.</div></div></div></div></div>`;makeQR();setTimeout(()=>startScanner(),100)}
+function makeQR(){let target=$("qr");if(!target)return;let s=(businessCode||"HIKMA");let h=0;for(let c of s)h=(h*31+c.charCodeAt(0))>>>0;let bits="";for(let i=0;i<144;i++){h=(h*1664525+1013904223)>>>0;bits+=`<i style="background:${h%3?'#07111f':'transparent'}"></i>`}target.innerHTML=bits}
+async function startScanner(){
+  const msg=$("scanMsg");
+  const video=$("video");
+
+  if(!video){
+    return;
+  }
+
+  if(!window.isSecureContext){
+    msg.textContent='Camera requires a secure HTTPS connection.';
+    return;
+  }
+
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    msg.textContent='This browser does not support camera access. Use manual lookup.';
+    return;
+  }
+
+  try{
+    stopScanner();
+
+    msg.textContent='Requesting camera permission...';
+
+    scannerStream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:1280},
+        height:{ideal:720}
+      },
+      audio:false
+    });
+
+    video.srcObject=scannerStream;
+    await video.play();
+
+    msg.textContent='Camera active. Point it at a barcode or QR code.';
+
+    if('BarcodeDetector' in window){
+      let detector;
+      try{
+        detector=new BarcodeDetector({
+          formats:['qr_code','ean_13','ean_8','code_128','upc_a']
+        });
+      }catch{
+        detector=new BarcodeDetector();
+      }
+
+      const loop=async()=>{
+        if(!scannerStream||video.readyState<2)return;
+
+        try{
+          const codes=await detector.detect(video);
+
+          if(codes.length){
+            const value=codes[0].rawValue||'';
+            if(value){
+              $("lookup").value=value;
+              lookupProduct();
+              msg.textContent='Detected: '+value;
+            }
+          }
+        }catch{}
+
+        if(scannerStream) requestAnimationFrame(loop);
+      };
+
+      requestAnimationFrame(loop);
+    }else{
+      msg.textContent='Camera active. Automatic barcode detection is not supported by this browser. Use Product Lookup.';
+    }
+
+  }catch(e){
+    console.error('Camera error:',e);
+
+    const name=e?.name||'UnknownError';
+
+    if(name==='NotAllowedError'||name==='PermissionDeniedError'){
+      msg.textContent='Camera permission was denied. Allow camera access for this site, then try again.';
+    }else if(name==='NotFoundError'||name==='DevicesNotFoundError'){
+      msg.textContent='No camera was found on this device.';
+    }else if(name==='NotReadableError'||name==='TrackStartError'){
+      msg.textContent='The camera is busy or unavailable. Close other apps using the camera and try again.';
+    }else if(name==='OverconstrainedError'){
+      msg.textContent='The requested camera mode is unavailable. Try again.';
+    }else{
+      msg.textContent='Camera error: '+name+'. You can still use Product Lookup.';
+    }
+  }
+}
+function stopScanner(){scannerStream?.getTracks().forEach(t=>t.stop());scannerStream=null;let v=$("video");if(v)v.srcObject=null}
+function lookupProduct(){
+  let q=$("lookup").value.trim().toLowerCase();
+  let p=cache.products.find(x=>
+    String(x.sku||'').toLowerCase()===q ||
+    String(x.barcode||'').toLowerCase()===q
+  );
+
+  $("lookupResult").innerHTML=p
+    ? `<div class="insight">
+        <b>${esc(p.name)}</b>
+        <span class="mini">${esc(p.category)} · ${esc(p.sku||p.barcode||'')} · ${p.stock} in stock · ${money(p.sellPrice)}</span>
+        <button class="btn primary" style="margin-top:10px" onclick="scanAddToSale('${p._id?.$oid||p._id}')">Add to Sale</button>
+      </div>`
+    : `<div class="insight">
+        <b>Not found</b>
+        <span class="mini">No product in the current dataset matches that code.</span>
+      </div>`;
+}
+
+async function scanAddToSale(id){
+  if(!id){
+    toast("Product ID is missing.");
+    return;
+  }
+
+  try{
+    await openSale(id);
+    toast("Product added to sale.");
+  }catch(e){
+    toast("Could not open sale: " + e.message);
+  }
+}
+function renderUsers(){let rows=cache.users;$("page-users").innerHTML=`<div class="hero"><div><h1>Users</h1><p>CEO, Manager and Staff accounts.</p></div><button class="btn primary" onclick="openUser()">＋ User</button></div>${panel('User management',`<div class="tableWrap"><table class="table"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td><span class="pill good">Active</span></td><td><button class="btn" onclick="editUser('${u._id?.$oid||u._id}')">Edit</button> <button class="btn bad" onclick="deleteUser('${u._id?.$oid||u._id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Users are loaded after authentication.</td></tr>'}</tbody></table></div>`)}`}
+function renderSettings(){$("page-settings").innerHTML=`<div class="hero"><div><h1>Settings</h1><p>Business connection and local-device controls.</p></div><button class="btn" onclick="logout()">Log out</button></div><div class="grid three"><div class="card"><div class="cardBody"><h2>Offline data</h2><p class="mini">${cache.products.length} products · ${cache.sales.length} sales · ${cache.customers.length} customers cached.</p><button class="btn" onclick="syncAll()">Sync now</button></div></div><div class="card"><div class="cardBody"><h2>Business</h2><p class="mini">${esc(cache.settings.name||cache.settings.businessName||'Your business')}</p><p class="mini">Current user: ${esc(currentUser?.name||'—')} (${esc(currentUser?.role||'—')})</p></div></div></div>${currentUser&&['CEO','Manager'].includes(currentUser.role)?`<div class="card" style="margin-top:14px;border:1px solid #ef4444"><div class="cardBody"><h2 style="color:#ef4444">Danger Zone</h2><p class="mini">Destructive business-data actions. CEO and Manager only.</p><div style="margin-top:12px"><h3>Clear Sales History</h3><p class="mini">Deletes all sales for this business and restores the quantities back to inventory.</p><button class="btn bad" onclick="resetSalesHistory()">Delete All Sales</button></div></div></div>`:''}`}
+
+function openModal(title,body){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modal").classList.add('open')};function closeModal(){$("modal").classList.remove('open')};$("modal").addEventListener('click',e=>{if(e.target===$("modal"))closeModal()});
+async function openSale(preselectedProductId=""){
+  try{
+    if (token){
+      const products = await api("/api/products");
+      cache.products = Array.isArray(products) ? products : [];
+      saveCache();
+    }
+  }catch(err){
+    console.warn("Could not refresh products before sale:", err);
+  }
+
+  const products = (cache.products || []).filter(
+    p => Number(p.stock || 0) > 0
+  );
+
+  openModal('Record sale',`
+    <form class="formgrid" onsubmit="submitSale(event)">
+      <div class="field" style="grid-column:1/-1">
+        <label>Product</label>
+        <select id="sp" class="input" required onchange="updateSaleCalculation()">
+          <option value="">Select product...</option>
+          ${products.map(p => {
+            const id = p._id?.$oid || p._id;
+            return `<option value="${esc(id)}">
+              ${esc(p.name)} — ${p.stock} ${esc(p.unit || 'units')} available
+            </option>`;
+          }).join('')}
+        </select>
+      </div>
+
+      <div id="saleProductInfo" class="mini" style="grid-column:1/-1">
+        Select a product to see its price and available stock.
+      </div>
+
+      <div class="field">
+        <label>Quantity</label>
+        <input id="sq" class="input" type="number" min="1" value="1"
+          required oninput="updateSaleCalculation()">
+      </div>
+
+      <div class="field">
+        <label>Unit selling price</label>
+        <input id="su" class="input" type="number" readonly>
+      </div>
+
+      <div class="field">
+        <label>Total price</label>
+        <input id="st" class="input" type="number" readonly>
+      </div>
+
+      <div class="field">
+        <label>Profit</label>
+        <input id="spr" class="input" type="number" readonly>
+      </div>
+
+      <div class="field">
+        <label>Customer name</label>
+        <input id="sc" class="input" placeholder="Walk-in">
+      </div>
+
+      <div class="field">
+        <label>Payment method</label>
+        <select id="sm" class="input">
+          <option>Cash</option>
+          <option>M-Pesa</option>
+          <option>Bank Transfer</option>
+          <option>Card</option>
+          <option>Credit</option>
+        </select>
+      </div>
+
+      <div id="saleTotalPreview"
+        style="grid-column:1/-1;padding:14px;border-radius:12px;background:var(--panel);border:1px solid var(--line)">
+        <b>Total: KSh 0.00</b>
+      </div>
+
+      <div style="grid-column:1/-1">
+        <button class="btn primary" style="width:100%" id="saveSaleBtn">
+          Save sale
+        </button>
+      </div>
+    </form>
+  `);
+
+  if(preselectedProductId && $("sp")){
+    $("sp").value=preselectedProductId;
+  }
+
+  updateSaleCalculation();
+}
+
+function selectedSaleProduct(){
+  const id = $("sp")?.value;
+  if (!id) return null;
+
+  return (cache.products || []).find(
+    p => String(p._id?.$oid || p._id) === String(id)
+  ) || null;
+}
+
+function updateSaleCalculation(){
+  const p = selectedSaleProduct();
+  const qty = Math.max(1, Number($("sq")?.value || 1));
+
+  if (!p){
+    if ($("su")) $("su").value = "0";
+    if ($("st")) $("st").value = "0";
+    if ($("spr")) $("spr").value = "0";
+    if ($("saleProductInfo"))
+      $("saleProductInfo").textContent = "Select a product to see its price and available stock.";
+    if ($("saleTotalPreview"))
+      $("saleTotalPreview").innerHTML = "<b>Total: KSh 0.00</b>";
+    return;
+  }
+
+  const stock = Number(p.stock || 0);
+  const sellPrice = Number(p.sellPrice || 0);
+  const costPrice = Number(p.costPrice || 0);
+
+  const total = qty * sellPrice;
+  const profit = qty * (sellPrice - costPrice);
+
+  if ($("su")) $("su").value = sellPrice.toFixed(2);
+  if ($("st")) $("st").value = total.toFixed(2);
+  if ($("spr")) $("spr").value = profit.toFixed(2);
+
+  if ($("saleProductInfo")){
+    $("saleProductInfo").innerHTML =
+      `<b>${esc(p.name)}</b> · ${stock} ${esc(p.unit || "units")} available · Cost ${money(costPrice)} · Selling ${money(sellPrice)}`;
+  }
+
+  if ($("saleTotalPreview")){
+    $("saleTotalPreview").innerHTML =
+      `<b>Total: ${money(total)}</b> · Profit: ${money(profit)} · Remaining stock after sale: ${Math.max(0, stock - qty)} ${esc(p.unit || "units")}`;
+  }
+
+  const btn = $("saveSaleBtn");
+  if (btn){
+    btn.disabled = qty > stock;
+    btn.textContent = qty > stock
+      ? `Only ${stock} available`
+      : "Save sale";
+  }
+}
+
+async function submitSale(e){
+  e.preventDefault();
+
+  const p = selectedSaleProduct();
+  const quantity = Number($("sq").value || 0);
+
+  if (!p){
+    toast("Please select a product.");
+    return;
+  }
+
+  if (!Number.isInteger(quantity) || quantity <= 0){
+    toast("Enter a valid quantity.");
+    return;
+  }
+
+  const stock = Number(p.stock || 0);
+
+  if (quantity > stock){
+    toast(`Only ${stock} ${p.unit || "units"} available.`);
+    return;
+  }
+
+  const customerName = ($("sc").value || "").trim() || "Walk-in";
+  const paymentMethod = $("sm").value || "Cash";
+
+  const payload = {
+    productId: String(p._id?.$oid || p._id),
+    quantity,
+    customerName,
+    paymentMethod,
+    date: new Date().toISOString().slice(0,10)
+  };
+
+  const btn = $("saveSaleBtn");
+
+  if (btn){
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+  }
+
+  try{
+    /*
+     * The API is the source of truth.
+     * It calculates unit price, total price, profit and
+     * deducts inventory on the server.
+     */
+    const saved = await api("/api/sales", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    if (!saved || !saved._id){
+      throw new Error("Server did not return the saved sale.");
+    }
+
+    /*
+     * Replace the local sale if it somehow already exists,
+     * otherwise add the authoritative server record.
+     */
+    const saleId = String(saved._id?.$oid || saved._id);
+
+    const existingSale = (cache.sales || []).findIndex(
+      s => String(s._id?.$oid || s._id) === saleId
+    );
+
+    if (existingSale >= 0){
+      cache.sales[existingSale] = saved;
+    }else{
+      cache.sales.push(saved);
+    }
+
+    /*
+     * Update inventory immediately using the server's
+     * remainingStock value.
+     */
+    const productIndex = (cache.products || []).findIndex(
+      q => String(q._id?.$oid || q._id) === String(payload.productId)
+    );
+
+    if (productIndex >= 0){
+      cache.products[productIndex] = {
+        ...cache.products[productIndex],
+        stock: Number(saved.remainingStock ?? 0),
+        updatedAt: saved.createdAt || cache.products[productIndex].updatedAt
+      };
+    }
+
+    saveCache();
+
+    closeModal();
+
+    /*
+     * Refresh from the API after the successful transaction.
+     * This makes Sales, Dashboard, Inventory and Analytics
+     * use the persisted database values.
+     */
+    await syncAll();
+
+    /*
+     * Make sure the saved transaction is still present
+     * after synchronization.
+     */
+    const persisted = (cache.sales || []).some(
+      s => String(s._id?.$oid || s._id) === saleId
+    );
+
+    if (!persisted){
+      throw new Error("Sale was created but could not be loaded back from the server.");
+    }
+
+    renderAll();
+
+    toast(
+      `Sale saved: ${saved.productName} × ${saved.quantity} — ${money(saved.totalPrice)} (${saved.paymentMethod}).`
+    );
+
+  }catch(err){
+    if (btn){
+      btn.disabled = false;
+      btn.textContent = "Save sale";
+    }
+
+    toast("Sale failed: " + (err?.message || "Unknown error"));
+  }
+}
+
+function openProduct(){openModal('Add product',`<form class="formgrid" onsubmit="submitProduct(event)"><div class="field"><label>Name</label><input id="pn" class="input" required></div><div class="field"><label>Category</label><input id="pcat" class="input" required value="General"></div><div class="field"><label>Unit</label><input id="punit" class="input" required value="pcs"></div><div class="field"><label>SKU / barcode</label><input id="psku" class="input"></div><div class="field"><label>Stock</label><input id="pstock" class="input" type="number" value="0"></div><div class="field"><label>Cost price</label><input id="pcost" class="input" type="number" step="0.01" value="0"></div><div class="field"><label>Selling price</label><input id="psell" class="input" type="number" step="0.01" value="0"></div><div class="field"><label>Reorder level</label><input id="preorder" class="input" type="number" value="5"></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Save product</button></div></form>`)}
+async function submitProduct(e){e.preventDefault();let x={name:$("pn").value,category:$("pcat").value,unit:$("punit").value,sku:$("psku").value||undefined,stock:Number($("pstock").value||0),costPrice:Number($("pcost").value||0),sellPrice:Number($("psell").value||0),reorderLevel:Number($("preorder").value||0)};try{let saved=await api('/api/products',{method:'POST',body:JSON.stringify(x)});cache.products.push(saved);saveCache();closeModal();renderAll();toast('Product saved to API.')}catch(err){toast('Could not save product: '+err.message)}}
+function openCustomer(){openModal('Add customer',`<form class="formgrid" onsubmit="submitCustomer(event)"><div class="field"><label>Name</label><input id="cn" class="input" required></div><div class="field"><label>Phone</label><input id="cp" class="input"></div><div class="field"><label>Email</label><input id="ce" class="input"></div><div class="field"><label>Address</label><input id="ca" class="input"></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Save customer</button></div></form>`)}
+async function submitCustomer(e){e.preventDefault();let x={name:$("cn").value,phone:$("cp").value,email:$("ce").value,address:$("ca").value,loyalty:0,balance:0};try{let saved=await api('/api/customers',{method:'POST',body:JSON.stringify(x)});cache.customers.push(saved);saveCache();closeModal();renderAll();toast('Customer saved.')}catch(err){toast('Could not save customer: '+err.message)}}
+function openSupplier(){openModal('Add supplier',`<form class="formgrid" onsubmit="submitSupplier(event)"><div class="field"><label>Name</label><input id="sn" class="input" required></div><div class="field"><label>Phone</label><input id="spn" class="input"></div><div class="field"><label>Category</label><input id="scat" class="input" value="General"></div><div class="field"><label>Balance</label><input id="sbal" class="input" type="number" value="0"></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Save supplier</button></div></form>`)}
+async function submitSupplier(e){e.preventDefault();let x={name:$("sn").value,phone:$("spn").value,category:$("scat").value,balance:Number($("sbal").value||0)};try{let saved=await api('/api/suppliers',{method:'POST',body:JSON.stringify(x)});cache.suppliers.push(saved);saveCache();closeModal();renderAll();toast('Supplier saved.')}catch(err){toast('Could not save supplier: '+err.message)}}
+function openEmployee(){openModal('Add employee',`<form class="formgrid" onsubmit="submitEmployee(event)"><div class="field"><label>Name</label><input id="en" class="input" required></div><div class="field"><label>Role</label><input id="er" class="input" value="Staff"></div><div class="field"><label>Phone</label><input id="ephone" class="input"></div><div class="field"><label>Status</label><select id="estatus" class="input"><option>Active</option><option>Inactive</option></select></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Save employee</button></div></form>`)}
+async function submitEmployee(e){e.preventDefault();let x={name:$("en").value,role:$("er").value,phone:$("ephone").value,status:$("estatus").value};try{let saved=await api('/api/employees',{method:'POST',body:JSON.stringify(x)});cache.employees.push(saved);saveCache();closeModal();renderAll();toast('Employee saved.')}catch(err){toast('Could not save employee: '+err.message)}}
+function openUser(){openModal('Add user',`<form class="formgrid" onsubmit="submitUser(event)"><div class="field"><label>Name</label><input id="un" class="input" required></div><div class="field"><label>Role</label><select id="ur" class="input"><option>Manager</option><option>Staff</option></select></div><div class="field"><label>4-digit PIN</label><input id="up" class="input" maxlength="4" pattern="\\d{4}" required></div><div style="grid-column:1/-1"><button class="btn primary" style="width:100%">Create user</button></div></form>`)}
+async function submitUser(e){e.preventDefault();let x={name:$("un").value,role:$("ur").value,pin:$("up").value};try{let saved=await api('/api/auth/users',{method:'POST',body:JSON.stringify(x)});cache.users.push(saved);saveCache();closeModal();renderAll();toast('User created.')}catch(err){toast('Could not create user: '+err.message)}}
+function editUser(id){let u=cache.users.find(x=>(x._id?.$oid||x._id)===id);if(!u)return;openModal('Edit profile',`<form onsubmit="submitEditUser(event,'${id}')" class="form"><div class="field"><label>Name</label><input id="eun" class="input" value="${esc(u.name)}"></div><div class="field"><label>New PIN (optional)</label><input id="eup" class="input" maxlength="4"></div><button class="btn primary">Save changes</button></form>`)}
+async function deleteUser(id){
+  if(!currentUser || !["CEO","Manager"].includes(currentUser.role)){
+    toast("Only CEO or Manager can delete users.");
+    return;
+  }
+
+  if((currentUser.id || currentUser._id) === id){
+    toast("You cannot delete your own account.");
+    return;
+  }
+
+  const user = cache.users.find(u => (u._id?.$oid || u._id || u.id) === id);
+  if(!user)return;
+
+  if(!confirm("Delete user " + (user.name || "") + "?"))return;
+
+  try{
+    await api("/api/auth/users/" + id,{method:"DELETE"});
+    cache.users=cache.users.filter(u => (u._id?.$oid || u._id || u.id) !== id);
+    saveCache();
+    renderUsers();
+    toast("User deleted.");
+  }catch(e){
+    toast("Could not delete user: " + e.message);
+  }
+}
+
+async function submitEditUser(e,id){e.preventDefault();let x={name:$("eun").value};if($("eup").value)x.pin=$("eup").value;try{let saved=await api('/api/auth/users/'+id,{method:'PUT',body:JSON.stringify(x)});cache.users=cache.users.map(u=>(u._id?.$oid||u._id)===id?saved:u);saveCache();closeModal();renderAll();toast('User updated.')}catch(err){toast(err.message)}}
+async function deleteProduct(id){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can delete records.');return;}if(!confirm('Delete this product?'))return;try{await api('/api/products/'+id,{method:'DELETE'});cache.products=cache.products.filter(p=>(p._id?.$oid||p._id)!==id);saveCache();renderAll();toast('Product deleted.')}catch(e){toast(e.message)}}
+async function deleteSale(id){
+  if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){
+    toast('Only CEO or Manager can delete sales.');
+    return;
+  }
+
+  if(!id){
+    toast('Invalid sale ID.');
+    return;
+  }
+
+  if(!confirm('Delete this sale and restore its quantity to inventory?')) return;
+
+  try{
+    const result=await api('/api/sales/'+id,{method:'DELETE'});
+
+    cache.sales=cache.sales.filter(
+      x=>(x._id?.$oid||x._id)!==id
+    );
+
+    saveCache();
+    await syncAll();
+
+    toast(result.message||'Sale deleted and stock restored.');
+  }catch(e){
+    toast('Could not delete sale: '+e.message);
+  }
+}
+
+async function deleteCrud(col,id){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can delete records.');return;}if(!confirm('Delete this record?'))return;try{await api('/api/'+col+'/'+id,{method:'DELETE'});cache[col]=cache[col].filter(x=>(x._id?.$oid||x._id)!==id);saveCache();renderAll();toast('Deleted.')}catch(e){toast(e.message)}}
+function openPurchase(){let p=cache.products[0],s=cache.suppliers[0];openModal('New purchase',`<form class="form" onsubmit="submitPurchase(event)"><div class="formgrid"><div class="field"><label>Supplier ID</label><input id="supid" class="input" value="${esc(s?._id?.$oid||s?._id||'')}" required></div><div class="field"><label>Supplier name</label><input id="supname" class="input" value="${esc(s?.name||'')}" required></div><div class="field"><label>Product ID</label><input id="ppid" class="input" value="${esc(p?._id?.$oid||p?._id||'')}" required></div><div class="field"><label>Product name</label><input id="ppname" class="input" value="${esc(p?.name||'')}" required></div><div class="field"><label>Quantity</label><input id="pqty" class="input" type="number" min="1" value="1" required></div><div class="field"><label>Unit cost</label><input id="pcu" class="input" type="number" step="0.01" value="0" required></div></div><div class="field"><label>Payment method</label><select id="ppm" class="input"><option>Cash</option><option>M-Pesa</option><option>Bank Transfer</option><option>Credit</option></select></div><button class="btn primary">Save purchase</button></form>`)}
+async function submitPurchase(e){e.preventDefault();let x={supplierId:$("supid").value,supplierName:$("supname").value,items:[{productId:$("ppid").value,productName:$("ppname").value,quantity:Number($("pqty").value),unitCost:Number($("pcu").value)}],paymentMethod:$("ppm").value,status:'received'};try{let saved=await api('/api/purchases',{method:'POST',body:JSON.stringify(x)});cache.purchases.push(saved);saveCache();closeModal();syncAll();toast('Purchase saved and stock updated.')}catch(e){toast(e.message)}}
+function openAi(){openModal('✦ Hikma AI Insights',buildInsights().map(i=>`<div class="insight" style="margin-bottom:9px"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join(''))}
+function toast(t){let x=document.createElement('div');x.textContent=t;x.style.cssText='position:fixed;right:16px;bottom:16px;background:#0d192b;border:1px solid #2b415f;color:#fff;padding:11px 13px;border-radius:11px;z-index:300;box-shadow:0 16px 40px #0007';document.body.appendChild(x);setTimeout(()=>x.remove(),2500)}
+async function syncAll(){if(!token)return;try{let [settings,products,sales,customers,purchases,suppliers,employees,expenses,users]=await Promise.all([api('/api/settings').catch(()=>cache.settings),api('/api/products'),api('/api/sales'),api('/api/customers'),api('/api/purchases'),api('/api/suppliers'),api('/api/employees'),api('/api/expenses'),api('/api/auth/users?businessCode='+encodeURIComponent(businessCode)).then(x=>x.users).catch(()=>cache.users)]);cache={...cache,settings:settings||{},products:products||[],sales:sales||[],customers:customers||[],purchases:purchases||[],suppliers:suppliers||[],employees:employees||[],expenses:expenses||[],users:users||[]};saveCache();net(true,'Online / Synced');renderAll()}catch(e){net(false,'Offline / Cached');renderAll()}}
+if(!currentUser||!token){$("auth").classList.remove('hidden');$("app").classList.add('hidden')}else{$("auth").classList.add('hidden');$("app").classList.remove('hidden');net(false,'Checking connection…');renderAll();syncAll()}
+window.addEventListener('online',()=>syncAll());window.addEventListener('offline',()=>net(false,'Offline / Cached'));
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+async function resetSalesHistory(){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can clear sales history.');return;}if(!cache.sales.length){toast('There are no sales to clear.');return;}const ok=confirm('DANGER ZONE\\n\\nThis will permanently delete ALL sales for this business and restore their quantities to inventory.\\n\\nContinue?');if(!ok)return;const ok2=confirm('FINAL CONFIRMATION\\n\\nDelete all '+cache.sales.length+' sales?');if(!ok2)return;try{const result=await api('/api/sales/reset/all',{method:'DELETE'});cache.sales=[];saveCache();await syncAll();toast(`Sales cleared. ${result.deletedSales||0} sales deleted and ${result.restoredUnits||0} units restored.`);}catch(e){toast('Could not clear sales: '+e.message)}}
+function exportReport(){let t=cache.sales.reduce((a,s)=>a+Number(s.totalPrice||0),0),p=cache.sales.reduce((a,s)=>a+Number(s.profit||0),0);let text=`HIKMA BUSINESS OS REPORT\nGenerated: ${new Date().toLocaleString()}\nRevenue: ${money(t)}\nProfit: ${money(p)}\nSales: ${cache.sales.length}\nProducts: ${cache.products.length}\nCustomers: ${cache.customers.length}\nLow stock: ${lowStock().length}\n\nAI INSIGHTS\n`+buildInsights().map(i=>i.title+': '+i.text).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download='hikma-business-report.txt';a.click()}
+</script>
+</body></html>

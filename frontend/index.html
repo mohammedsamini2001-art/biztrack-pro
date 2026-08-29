@@ -157,6 +157,8 @@ function showAuthTab(tab){
 function backToCode(){$("userStep").classList.add("hidden");$("codeStep").classList.remove("hidden");$("authErr").textContent=""}
 async function registerBusiness(){
   $("authErr").textContent="";
+  $("authErr").style.color="";
+
   const businessName=$("registerBusinessName").value.trim();
   const ownerName=$("registerOwnerName").value.trim();
   const pin=$("registerPin").value.trim();
@@ -165,7 +167,8 @@ async function registerBusiness(){
     $("authErr").textContent="Enter your business name and your name.";
     return;
   }
-  if(!/^\d{4}$/.test(pin)){
+
+  if(!/^\\d{4}$/.test(pin)){
     $("authErr").textContent="PIN must be exactly 4 digits.";
     return;
   }
@@ -177,21 +180,22 @@ async function registerBusiness(){
       body:JSON.stringify({businessName,ownerName,pin})
     });
 
-    token=r.token;
-    currentUser=r.user;
     businessCode=r.businessCode;
 
-    localStorage.setItem("hikma_token",token);
-    localStorage.setItem("hikma_user",JSON.stringify(currentUser));
+    token="";
+    currentUser=null;
+    localStorage.removeItem("hikma_token");
+    localStorage.removeItem("hikma_user");
     localStorage.setItem("hikma_business_code",businessCode);
 
-    $("authErr").textContent="Business created successfully. Your business code is "+businessCode;
+    $("businessCode").value=businessCode;
     $("authErr").style.color="inherit";
+    $("authErr").textContent="Business created successfully! Your Business Code is: "+businessCode+" — use it to log in.";
 
-    $("auth").classList.add("hidden");
-    $("app").classList.remove("hidden");
-    renderAll();
-    syncAll();
+    showAuthTab("login");
+    $("codeStep").classList.remove("hidden");
+    $("userStep").classList.add("hidden");
+    $("pin").value="";
   }catch(e){
     $("authErr").textContent=e.message||"Could not create business.";
   }

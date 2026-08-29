@@ -48,6 +48,7 @@ salesRoutes.post("/", async (c) => {
   const user = c.get("user");
   const body = await c.req.json();
 
+  const clientId = String(body.clientId || "").trim();
   const productId = String(body.productId || "");
   const quantity = Number(body.quantity);
 
@@ -83,6 +84,27 @@ salesRoutes.post("/", async (c) => {
   }
 
   const db = await getDb(c.env.MONGODB_URI);
+
+  // Offline-first idempotency:
+  // If the same client-generated sale ID is retried, return the
+  // already-created sale instead of deducting stock twice.
+  if (clientId) {
+    const existingSale = await db.collection("sales").findOne({
+      businessId: user.businessId,
+      clientId,
+    });
+
+    if (existingSale) {
+      return c.json(
+        {
+          ...existingSale,
+          remainingStock: undefined,
+          alreadyProcessed: true,
+        },
+        200
+      );
+    }
+  }
 
   const product = await db.collection("products").findOne({
     _id: new ObjectId(productId),
@@ -159,6 +181,8 @@ salesRoutes.post("/", async (c) => {
 
   const sale = {
     businessId: user.businessId,
+
+    ...(clientId ? { clientId } : {}),
 
     productId: product._id,
     productName: product.name,

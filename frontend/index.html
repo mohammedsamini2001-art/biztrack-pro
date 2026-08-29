@@ -157,7 +157,10 @@ function lowStock(){return cache.products.filter(p=>Number(p.stock||0)<=Number(p
 function days(n){let d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
 function periodSales(range){let from=range===365?days(365):days(range);return cache.sales.filter(s=>String(s.date||"")>=from)}
 function renderAll(){renderDashboard();renderSales();renderInventory();renderCustomers();renderPurchases();renderSuppliers();renderEmployees();renderAnalytics();renderScan();renderUsers();renderSettings();applyRoleVisibility();}
-function renderDashboard(){let today=new Date().toISOString().slice(0,10),t=cache.sales.filter(s=>s.date===today),month=periodSales(30),expenses=(cache.expenses||[]).filter(e=>String(e.date||"")>=days(30)).reduce((a,e)=>a+Number(e.amount||0),0);$("page-dashboard").innerHTML=`<div class="hero"><div><h1>Good business starts with visibility.</h1><p>${esc(cache.settings.name||cache.settings.businessName||"Your business")} — everything important in one place.</p></div><div class="actions">${currentUser && String(currentUser.role).trim().toLowerCase() !== "staff" ? '<button class="btn" onclick="go(\'analytics\')">View analysis →</button>' : ''}<button class="btn primary" onclick="openSale()">＋ Record sale</button></div></div><div class="grid stats"><div class="card stat"><label>Today revenue</label><strong>${money(t.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">${t.length} transactions</span></div><div class="card stat"><label>30-day revenue</label><strong>${money(month.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">All payment methods</span></div><div class="card stat"><label>Cash received</label><strong>${money(t.reduce((a,s)=>a+Number(s.cashAmount??(String(s.paymentMethod||"").toLowerCase()==="cash"?(s.totalPrice??s.total??0):0)),0))}</strong><span class="trend">Cash payments today</span></div><div class="card stat"><label>Profit</label><strong>${money(month.reduce((a,s)=>a+Number(s.profit||0),0))}</strong><span class="trend">Before expenses</span></div><div class="card stat"><label>Stock value</label><strong>${money(cache.products.reduce((a,p)=>a+Number(p.stock||0)*Number(p.costPrice||0),0))}</strong><span>${totalUnits()} units</span></div><div class="card stat"><label>Customers</label><strong>${cache.customers.length}</strong><span>CRM records</span></div></div><div class="grid two" style="margin-top:14px"><div class="card"><div class="cardHead"><h2>Sales trend</h2><div class="tabs"><button class="tab active" onclick="drawDashboard(30)">1 month</button><button class="tab" onclick="drawDashboard(7)">7 days</button><button class="tab" onclick="drawDashboard(14)">14 days</button><button class="tab" onclick="drawDashboard(365)">1 year</button></div></div><div class="chartWrap"><canvas id="dashChart"></canvas></div></div><div class="card"><div class="cardHead"><h2>AI business pulse</h2><span class="pill">Data-based</span></div><div class="cardBody insights">${buildInsights().map(i=>`<div class="insight"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join('')}</div></div></div><div class="grid three" style="margin-top:14px">${panel('Best sellers',topProducts())}${panel('Stock alerts',stockAlerts())}${panel('Recent sales',recentSales())}</div>`;drawDashboard(30)}
+function renderDashboard(){let today=new Date().toISOString().slice(0,10),t=cache.sales.filter(s=>s.date===today),month=periodSales(30),expenses=(cache.expenses||[]).filter(e=>String(e.date||"")>=days(30)).reduce((a,e)=>a+Number(e.amount||0),0);$("page-dashboard").innerHTML=`<div class="hero"><div><h1 id="businessHeroTitle">${esc(dynamicHeroMessage())}</h1><p>${esc(cache.settings.name||cache.settings.businessName||"Your business")} — everything important in one place.</p></div><div class="actions">${currentUser && String(currentUser.role).trim().toLowerCase() !== "staff" ? '<button class="btn" onclick="go(\'analytics\')">View analysis →</button>' : ''}<button class="btn primary" onclick="openSale()">＋ Record sale</button></div></div><div class="grid stats"><div class="card stat"><label>Today revenue</label><strong>${money(t.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">${t.length} transactions</span></div><div class="card stat"><label>30-day revenue</label><strong>${money(month.reduce((a,s)=>a+Number(s.totalPrice??s.total??0),0))}</strong><span class="trend">All payment methods</span></div><div class="card stat"><label>Cash received</label><strong>${money(t.reduce((a,s)=>a+Number(s.cashAmount??(String(s.paymentMethod||"").toLowerCase()==="cash"?(s.totalPrice??s.total??0):0)),0))}</strong><span class="trend">Cash payments today</span></div><div class="card stat"><label>Profit</label><strong>${money(month.reduce((a,s)=>a+Number(s.profit||0),0))}</strong><span class="trend">Before expenses</span></div><div class="card stat"><label>Stock value</label><strong>${money(cache.products.reduce((a,p)=>a+Number(p.stock||0)*Number(p.costPrice||0),0))}</strong><span>${totalUnits()} units</span></div><div class="card stat"><label>Customers</label><strong>${cache.customers.length}</strong><span>CRM records</span></div></div><div class="grid two" style="margin-top:14px"><div class="card"><div class="cardHead"><h2>Sales trend</h2><div class="tabs"><button class="tab active" onclick="drawDashboard(30)">1 month</button><button class="tab" onclick="drawDashboard(7)">7 days</button><button class="tab" onclick="drawDashboard(14)">14 days</button><button class="tab" onclick="drawDashboard(365)">1 year</button></div></div><div class="chartWrap"><canvas id="dashChart"></canvas></div></div><div class="card"><div class="cardHead"><h2>AI business pulse</h2><span class="pill">Data-based</span></div><div class="cardBody">
+<div id="businessPulse" class="insights"></div>
+<div id="pulseDots" style="display:flex;gap:6px;margin-top:12px;justify-content:center;"></div>
+</div></div></div><div class="grid three" style="margin-top:14px">${panel('Best sellers',topProducts())}${panel('Stock alerts',stockAlerts())}${panel('Recent sales',recentSales())}</div>`;drawDashboard(30);startBusinessPulse()}
 function panel(title,body){return `<div class="card"><div class="cardHead"><h2>${title}</h2></div><div class="cardBody">${body||'<div class="empty">No data yet.</div>'}</div></div>`}
 function chartData(range){let n=range===365?12:range===30?10:range;let out=[];for(let i=n-1;i>=0;i--){let d=new Date();if(range===365)d.setMonth(d.getMonth()-i);else d.setDate(d.getDate()-i);let k=range===365?d.toISOString().slice(0,7):d.toISOString().slice(0,10);let v=cache.sales.filter(s=>String(s.date||"").startsWith(k)).reduce((a,s)=>a+Number(s.totalPrice||0),0);out.push({k,v})}return out}
 function drawDashboard(range=30){if(!window.Chart)return;let el=$("dashChart");if(!el)return;let d=chartData(range);chart1?.destroy();chart1=new Chart(el,{type:'line',data:{labels:d.map(x=>x.k),datasets:[{label:'Revenue',data:d.map(x=>x.v),borderColor:'#46e6c1',backgroundColor:'rgba(70,230,193,.12)',fill:true,tension:.35,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#91a4bd'}}},scales:{x:{ticks:{color:'#91a4bd'},grid:{color:'rgba(34,51,76,.25)'}},y:{ticks:{color:'#91a4bd',callback:v=>'KSh '+Number(v).toLocaleString()},grid:{color:'rgba(34,51,76,.25)'}}}}})}
@@ -165,6 +168,66 @@ function topProducts(){let m={};cache.sales.forEach(s=>{let n=s.productName||s.p
 function stockAlerts(){let a=lowStock().slice(0,6);return a.length?a.map(p=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(p.name)}</div><div class="rowsub">${p.stock} ${esc(p.unit||'units')} remaining</div></div><span class="pill ${p.stock<=0?'bad':'warn'}">${p.stock<=0?'Out':'Low'}</span></div>`).join(''):'<div class="empty">Inventory looks healthy.</div>'}
 function recentSales(){let a=[...cache.sales].reverse().slice(0,5);return a.length?a.map(s=>`<div class="row"><div class="rowmain"><div class="rowtitle">${esc(s.productName||s.product||'Sale')}</div><div class="rowsub">${esc(s.date||'')}</div></div><div class="amount">${money(s.totalPrice||s.total)}</div></div>`).join(''):'<div class="empty">No sales yet.</div>'}
 function buildInsights(){let revenue=sumSales(),profit=cache.sales.reduce((a,s)=>a+Number(s.profit||0),0),low=lowStock(),best=Object.entries(cache.sales.reduce((m,s)=>{let n=s.productName||s.product; if(n)m[n]=(m[n]||0)+Number(s.totalPrice||0);return m},{})).sort((a,b)=>b[1]-a[1])[0];return[{title:'Revenue snapshot',text:`Hikma has recorded ${money(revenue)} across ${cache.sales.length} sales.`},{title:'Profit watch',text:profit>0?`Recorded sales carry ${money(profit)} in profit before expenses.`:'Profit data is not available yet; record product costs to improve the analysis.'},{title:'Inventory action',text:low.length?`${low.length} product(s) are at or below their reorder level.`:'No products are currently below their reorder level.'},{title:'Best seller',text:best?`${best[0]} is leading recorded sales at ${money(best[1])}.`:'Record product-linked sales to identify the best seller.'}]}
+function dynamicHeroMessage(){
+  let today=new Date().toISOString().slice(0,10);
+  let todaySales=cache.sales.filter(s=>String(s.date||"")===today);
+  let low=lowStock();
+
+  if(low.length) return "Your stock needs attention.";
+  if(todaySales.length===1) return "You have your first sale today.";
+  if(todaySales.length>1) return "Your business is active today.";
+  if(cache.sales.length) return "Your business is ready for today.";
+  return "Good business starts with visibility.";
+}
+
+let pulseTimer=null;
+
+function startBusinessPulse(){
+  let el=$("businessPulse");
+  let dots=$("pulseDots");
+  if(!el) return;
+
+  if(pulseTimer) clearInterval(pulseTimer);
+
+  let index=0;
+
+  function show(){
+    let items=buildInsights();
+    if(!items.length) return;
+
+    if(index>=items.length) index=0;
+
+    let i=items[index];
+
+    el.style.opacity="0";
+    el.style.transform="translateY(6px)";
+
+    setTimeout(()=>{
+      el.innerHTML=`<div class="insight">
+        <b>${esc(i.title)}</b>
+        <span class="mini">${esc(i.text)}</span>
+      </div>`;
+
+      el.style.transition="opacity .35s ease, transform .35s ease";
+      el.style.opacity="1";
+      el.style.transform="translateY(0)";
+
+      if(dots){
+        dots.innerHTML=items.map((_,n)=>
+          `<span style="width:6px;height:6px;border-radius:50%;background:${n===index?"currentColor":"rgba(145,164,189,.3)"};display:block"></span>`
+        ).join("");
+      }
+    },180);
+  }
+
+  show();
+
+  pulseTimer=setInterval(()=>{
+    index=(index+1)%Math.max(buildInsights().length,1);
+    show();
+  },4500);
+}
+
 function renderSales(){
   let rows=[...cache.sales].reverse();
 

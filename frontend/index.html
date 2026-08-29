@@ -156,20 +156,24 @@ function showAuthTab(tab){
 }
 function backToCode(){$("userStep").classList.add("hidden");$("codeStep").classList.remove("hidden");$("authErr").textContent=""}
 async function registerBusiness(){
-  $("authErr").textContent="";
-  $("authErr").style.color="";
+  const err=$("authErr");
+  err.textContent="";
+  err.style.color="";
 
   const businessName=$("registerBusinessName").value.trim();
   const ownerName=$("registerOwnerName").value.trim();
   const pin=$("registerPin").value.trim();
 
-  if(!businessName||!ownerName){
-    $("authErr").textContent="Enter your business name and your name.";
+  if(!businessName){
+    err.textContent="Enter your business name.";
     return;
   }
-
-  if(!/^\\d{4}$/.test(pin)){
-    $("authErr").textContent="PIN must be exactly 4 digits.";
+  if(!ownerName){
+    err.textContent="Enter your name.";
+    return;
+  }
+  if(!/^\d{4}$/.test(pin)){
+    err.textContent="Choose a 4-digit PIN. This PIN will be used by the business owner to log in.";
     return;
   }
 
@@ -180,24 +184,31 @@ async function registerBusiness(){
       body:JSON.stringify({businessName,ownerName,pin})
     });
 
-    businessCode=r.businessCode;
+    if(!r.businessCode){
+      throw new Error("Business was not created correctly: no Business Code was returned.");
+    }
 
     token="";
     currentUser=null;
+    businessCode=r.businessCode;
+
     localStorage.removeItem("hikma_token");
     localStorage.removeItem("hikma_user");
     localStorage.setItem("hikma_business_code",businessCode);
 
     $("businessCode").value=businessCode;
-    $("authErr").style.color="inherit";
-    $("authErr").textContent="Business created successfully! Your Business Code is: "+businessCode+" — use it to log in.";
+    $("registerBusinessName").value="";
+    $("registerOwnerName").value="";
+    $("registerPin").value="";
 
     showAuthTab("login");
     $("codeStep").classList.remove("hidden");
     $("userStep").classList.add("hidden");
-    $("pin").value="";
+
+    err.style.color="inherit";
+    err.textContent="Business created! Your Business Code is "+businessCode+". Enter it above and continue to log in.";
   }catch(e){
-    $("authErr").textContent=e.message||"Could not create business.";
+    err.textContent=e.message||"Could not create business.";
   }
 }
 async function login(){let pin=$("pin").value.trim();if(!selectedUserId||!/^\d{4}$/.test(pin)){ $("authErr").textContent="Select a user and enter a 4-digit PIN.";return }try{let r=await apiPublic("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessCode,userId:selectedUserId,pin})});token=r.token;currentUser=r.user;localStorage.setItem("hikma_token",token);localStorage.setItem("hikma_user",JSON.stringify(currentUser));localStorage.setItem("hikma_business_code",businessCode);$("auth").classList.add("hidden");$("app").classList.remove("hidden");renderAll();syncAll()}catch(e){$("authErr").textContent=e.message}}

@@ -63,18 +63,44 @@
 <div id="auth" class="auth">
   <div class="authCard">
     <div class="authLogo"><div class="logo"></div><h1>Hikma Business OS</h1><p>Run your business from one workspace.</p></div>
-    <div id="codeStep">
-      <div class="field"><label>Business code</label><input id="businessCode" class="input" maxlength="10" placeholder="e.g. BWIBOC"></div>
-      <button class="btn primary" style="width:100%;margin-top:11px" onclick="lookupBusiness()">Continue</button>
+    <div class="tab-switch" style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="tab-login" class="btn primary" style="flex:1" onclick="showAuthTab('login')">Log in</button>
+      <button id="tab-register" class="btn" style="flex:1" onclick="showAuthTab('register')">New business</button>
     </div>
-    <div id="userStep" class="hidden">
-      <div class="mini" id="businessName" style="margin-bottom:8px"></div>
-      <div id="userCards" class="usercards"></div>
-      <div class="field"><label>4-digit PIN</label><input id="pin" class="input pin" inputmode="numeric" maxlength="4" type="password" placeholder="••••"></div>
-      <button class="btn primary" style="width:100%;margin-top:11px" onclick="login()">Log in</button>
-      <button class="btn" style="width:100%;margin-top:8px" onclick="backToCode()">← Different business</button>
+
+    <div id="loginPanel">
+      <div id="codeStep">
+        <div class="field"><label>Business code</label><input id="businessCode" class="input" maxlength="10" placeholder="e.g. BWIBOC"></div>
+        <button class="btn primary" style="width:100%;margin-top:11px" onclick="lookupBusiness()">Continue</button>
+      </div>
+
+      <div id="userStep" class="hidden">
+        <div class="mini" id="businessName" style="margin-bottom:8px"></div>
+        <div id="userCards" class="usercards"></div>
+        <div class="field"><label>4-digit PIN</label><input id="pin" class="input pin" inputmode="numeric" maxlength="4" type="password" placeholder="••••"></div>
+        <button class="btn primary" style="width:100%;margin-top:11px" onclick="login()">Log in</button>
+        <button class="btn" style="width:100%;margin-top:8px" onclick="backToCode()">← Different business</button>
+      </div>
     </div>
+
+    <div id="registerPanel" class="hidden">
+      <div class="field">
+        <label>Business name</label>
+        <input id="registerBusinessName" class="input" placeholder="e.g. Mombasa Fresh Mart">
+      </div>
+      <div class="field">
+        <label>Your name</label>
+        <input id="registerOwnerName" class="input" placeholder="e.g. Mohammed">
+      </div>
+      <div class="field">
+        <label>Choose a 4-digit PIN</label>
+        <input id="registerPin" class="input pin" inputmode="numeric" maxlength="4" type="password" placeholder="••••">
+      </div>
+      <button class="btn primary" style="width:100%;margin-top:11px" onclick="registerBusiness()">Create business</button>
+    </div>
+
     <div id="authErr" class="authErr"></div>
+
   </div>
 </div>
 
@@ -121,7 +147,55 @@ async function api(path,opts={}){const headers={"Content-Type":"application/json
 async function lookupBusiness(){let code=$("businessCode").value.trim().toUpperCase();if(!code)return;$("authErr").textContent="";try{let r=await apiPublic("/api/auth/users?businessCode="+encodeURIComponent(code));businessCode=code;selectedUserId=null;$("businessName").textContent=r.business.name+" · "+r.business.code;$("userCards").innerHTML=r.users.map(u=>`<button class="usercard" onclick="selectUser('${u._id?.$oid||u._id}','${esc(u.name)}')"><div class="avatar">${esc((u.name||"?").slice(0,1).toUpperCase())}</div><div><b>${esc(u.name)}</b><div class="mini">${esc(u.role)}</div></div></button>`).join("");$("codeStep").classList.add("hidden");$("userStep").classList.remove("hidden")}catch(e){$("authErr").textContent=e.message}}
 async function apiPublic(path,opts={}){let res=await fetch(API+path,{...opts,headers:{Accept:"application/json",...(opts.headers||{})}});let txt=await res.text();let body;try{body=txt?JSON.parse(txt):{}}catch{body={}}if(!res.ok)throw new Error(body.error||`HTTP ${res.status}`);return body}
 function selectUser(id,name){selectedUserId=id;document.querySelectorAll(".usercard").forEach(b=>b.classList.toggle("selected",b.textContent.includes(name)));$("pin").focus()}
+function showAuthTab(tab){
+  $("tab-login").classList.toggle("primary",tab==="login");
+  $("tab-register").classList.toggle("primary",tab==="register");
+  $("loginPanel").classList.toggle("hidden",tab!=="login");
+  $("registerPanel").classList.toggle("hidden",tab!=="register");
+  $("authErr").textContent="";
+}
 function backToCode(){$("userStep").classList.add("hidden");$("codeStep").classList.remove("hidden");$("authErr").textContent=""}
+async function registerBusiness(){
+  $("authErr").textContent="";
+  const businessName=$("registerBusinessName").value.trim();
+  const ownerName=$("registerOwnerName").value.trim();
+  const pin=$("registerPin").value.trim();
+
+  if(!businessName||!ownerName){
+    $("authErr").textContent="Enter your business name and your name.";
+    return;
+  }
+  if(!/^\d{4}$/.test(pin)){
+    $("authErr").textContent="PIN must be exactly 4 digits.";
+    return;
+  }
+
+  try{
+    const r=await apiPublic("/api/auth/register-business",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({businessName,ownerName,pin})
+    });
+
+    token=r.token;
+    currentUser=r.user;
+    businessCode=r.businessCode;
+
+    localStorage.setItem("hikma_token",token);
+    localStorage.setItem("hikma_user",JSON.stringify(currentUser));
+    localStorage.setItem("hikma_business_code",businessCode);
+
+    $("authErr").textContent="Business created successfully. Your business code is "+businessCode;
+    $("authErr").style.color="inherit";
+
+    $("auth").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    renderAll();
+    syncAll();
+  }catch(e){
+    $("authErr").textContent=e.message||"Could not create business.";
+  }
+}
 async function login(){let pin=$("pin").value.trim();if(!selectedUserId||!/^\d{4}$/.test(pin)){ $("authErr").textContent="Select a user and enter a 4-digit PIN.";return }try{let r=await apiPublic("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessCode,userId:selectedUserId,pin})});token=r.token;currentUser=r.user;localStorage.setItem("hikma_token",token);localStorage.setItem("hikma_user",JSON.stringify(currentUser));localStorage.setItem("hikma_business_code",businessCode);$("auth").classList.add("hidden");$("app").classList.remove("hidden");renderAll();syncAll()}catch(e){$("authErr").textContent=e.message}}
 function logout(){token="";currentUser=null;localStorage.removeItem("hikma_token");localStorage.removeItem("hikma_user");location.reload()}
 const navLabels={dashboard:["Dashboard","Executive business overview"],sales:["Sales / POS","Transactions and daily selling"],inventory:["Inventory","Products, stock and reorder levels"],customers:["CRM / Customers","Customer relationships and balances"],purchases:["Purchases","Incoming stock and purchase orders"],suppliers:["Suppliers","Supplier relationships and balances"],employees:["Employees","Team records and roles"],analytics:["Analysis & Reports","Trends, leaders, profitability and insights"],scan:["Scan / QR","Barcode, QR and document tools"],users:["Users","Access and account controls"],settings:["Settings","Business configuration and connection"]};

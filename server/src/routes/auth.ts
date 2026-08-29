@@ -118,6 +118,25 @@ authRoutes.post("/login", async (c) => {
   const ok = await bcrypt.compare(pin, user.pinHash);
   if (!ok) return c.json({ error: "Incorrect PIN" }, 401);
 
+  // Record successful login activity without storing the PIN.
+  const loginAt = new Date().toISOString();
+
+  await db.collection("users").updateOne(
+    { _id: user._id, businessId: biz._id.toString() },
+    {
+      $set: { lastLogin: loginAt },
+      $inc: { loginCount: 1 }
+    }
+  );
+
+  await db.collection("loginEvents").insertOne({
+    userId: user._id.toString(),
+    businessId: biz._id.toString(),
+    role: user.role,
+    name: user.name,
+    loggedInAt: loginAt
+  });
+
   const token = await signToken(
     { id: user._id.toString(), businessId: biz._id.toString(), role: user.role, name: user.name },
     c.env.JWT_SECRET

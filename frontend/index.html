@@ -123,7 +123,7 @@ async function lookupBusiness(){let code=$("businessCode").value.trim().toUpperC
 async function apiPublic(path,opts={}){let res=await fetch(API+path,{...opts,headers:{Accept:"application/json",...(opts.headers||{})}});let txt=await res.text();let body;try{body=txt?JSON.parse(txt):{}}catch{body={}}if(!res.ok)throw new Error(body.error||`HTTP ${res.status}`);return body}
 function selectUser(id,name){selectedUserId=id;document.querySelectorAll(".usercard").forEach(b=>b.classList.toggle("selected",b.textContent.includes(name)));$("pin").focus()}
 function backToCode(){$("userStep").classList.add("hidden");$("codeStep").classList.remove("hidden");$("authErr").textContent=""}
-async function login(){let pin=$("pin").value.trim();if(!selectedUserId||!/^\d{4}$/.test(pin)){ $("authErr").textContent="Select a user and enter a 4-digit PIN.";return }try{let r=await apiPublic("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessCode,userId:selectedUserId,pin})});token=r.token;currentUser=r.user;localStorage.setItem("hikma_token",token);localStorage.setItem("hikma_user",JSON.stringify(currentUser));localStorage.setItem("hikma_business_code",businessCode);$("auth").classList.add("hidden");$("app").classList.remove("hidden");renderAll();syncAll()}catch(e){$("authErr").textContent=e.message}}
+async function login(){let pin=$("pin").value.trim();if(!selectedUserId||!/^\d{4}$/.test(pin)){ $("authErr").textContent="Select a user and enter a 4-digit PIN.";return }try{let r=await apiPublic("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessCode,userId:selectedUserId,pin})});token=r.token;currentUser=r.user;localStorage.setItem("hikma_token",token);localStorage.setItem("hikma_user",JSON.stringify(currentUser));localStorage.setItem("hikma_business_code",businessCode);$("auth").classList.add("hidden");$("app").classList.remove("hidden");renderAll();await syncPendingSales();syncAll()}catch(e){$("authErr").textContent=e.message}}
 function logout(){token="";currentUser=null;localStorage.removeItem("hikma_token");localStorage.removeItem("hikma_user");location.reload()}
 const navLabels={dashboard:["Dashboard","Executive business overview"],sales:["Sales / POS","Transactions and daily selling"],inventory:["Inventory","Products, stock and reorder levels"],customers:["CRM / Customers","Customer relationships and balances"],purchases:["Purchases","Incoming stock and purchase orders"],suppliers:["Suppliers","Supplier relationships and balances"],employees:["Employees","Team records and roles"],analytics:["Analysis & Reports","Trends, leaders, profitability and insights"],scan:["Scan / QR","Barcode, QR and document tools"],users:["Users","Access and account controls"],settings:["Settings","Business configuration and connection"]};
 function applyRoleVisibility(){
@@ -458,6 +458,10 @@ async function openSale(preselectedProductId=""){
     p => Number(p.stock || 0) > 0
   );
 
+  // One stable ID for this sale attempt.
+  // submitSale() reuses it if the request needs to be retried.
+  const clientId = crypto.randomUUID();
+
   openModal('Record sale',`
     <form class="formgrid" onsubmit="submitSale(event)">
       <div class="field" style="grid-column:1/-1">
@@ -615,6 +619,7 @@ async function submitSale(e){
   const paymentMethod = $("sm").value || "Cash";
 
   const payload = {
+    clientId,
     productId: String(p._id?.$oid || p._id),
     quantity,
     customerName,
@@ -711,6 +716,44 @@ async function submitSale(e){
       btn.textContent = "Save sale";
     }
 
+    const isNetworkFailure =
+      !navigator.onLine ||
+      err?.name === "TypeError";
+
+    if (isNetworkFailure){
+      try{
+        await hikmaQueueOperation({
+          type: "sale",
+          path: "/api/sales",
+          method: "POST",
+          body: payload
+        });
+
+        /*
+         * Keep the transaction locally visible while offline.
+         * The server remains authoritative once synchronization
+         * succeeds.
+         */
+        const localSale = {
+          ...payload,
+          _offlinePending: true,
+          createdAt: new Date().toISOString()
+        };
+
+        cache.sales = cache.sales || [];
+        cache.sales.push(localSale);
+        saveCache();
+
+        closeModal();
+        renderAll();
+
+        toast("Sale saved offline. It will sync automatically when you are online.");
+        return;
+      }catch(queueError){
+        console.error("Could not queue offline sale:", queueError);
+      }
+    }
+
     toast("Sale failed: " + (err?.message || "Unknown error"));
   }
 }
@@ -795,9 +838,60 @@ function openPurchase(preselectedProductId=""){
 async function submitPurchase(e){e.preventDefault();let x={supplierId:$("supid").value,supplierName:$("supname").value,items:[{productId:$("ppid").value,productName:$("ppname").value,quantity:Number($("pqty").value),unitCost:Number($("pcu").value)}],paymentMethod:$("ppm").value,status:'received'};try{let saved=await api('/api/purchases',{method:'POST',body:JSON.stringify(x)});cache.purchases.push(saved);saveCache();closeModal();syncAll();toast('Purchase saved and stock updated.')}catch(e){toast(e.message)}}
 function openAi(){openModal('✦ Hikma AI Insights',buildInsights().map(i=>`<div class="insight" style="margin-bottom:9px"><b>${esc(i.title)}</b><span class="mini">${esc(i.text)}</span></div>`).join(''))}
 function toast(t){let x=document.createElement('div');x.textContent=t;x.style.cssText='position:fixed;right:16px;bottom:16px;background:#0d192b;border:1px solid #2b415f;color:#fff;padding:11px 13px;border-radius:11px;z-index:300;box-shadow:0 16px 40px #0007';document.body.appendChild(x);setTimeout(()=>x.remove(),2500)}
+
+let saleSyncRunning = false;
+
+async function syncPendingSales(){
+  if (!token || saleSyncRunning) return;
+
+  const pending = await hikmaGetPendingOperations().catch(() => []);
+  const sales = pending.filter(op => op.type === "sale");
+
+  if (!sales.length) return;
+
+  saleSyncRunning = true;
+
+  try{
+    for (const operation of sales){
+      try{
+        const saved = await api(operation.path, {
+          method: operation.method || "POST",
+          body: JSON.stringify(operation.body)
+        });
+
+        if (!saved || !saved._id){
+          throw new Error("Server did not return the saved sale.");
+        }
+
+        await hikmaMarkOperationDone(operation.id);
+
+        const saleId = String(saved._id?.$oid || saved._id);
+        const existingIndex = (cache.sales || []).findIndex(
+          sale => String(sale._id?.$oid || sale._id) === saleId
+        );
+
+        if (existingIndex >= 0){
+          cache.sales[existingIndex] = saved;
+        }else{
+          cache.sales.push(saved);
+        }
+
+        saveCache();
+      }catch(err){
+        await hikmaMarkOperationFailed(
+          operation.id,
+          err?.message || "Sale sync failed"
+        );
+      }
+    }
+  }finally{
+    saleSyncRunning = false;
+  }
+}
+
 async function syncAll(){if(!token)return;try{let [settings,products,sales,customers,purchases,suppliers,employees,expenses,users]=await Promise.all([api('/api/settings').catch(()=>cache.settings),api('/api/products'),api('/api/sales'),api('/api/customers'),api('/api/purchases'),api('/api/suppliers'),api('/api/employees'),api('/api/expenses'),api('/api/auth/users?businessCode='+encodeURIComponent(businessCode)).then(x=>x.users).catch(()=>cache.users)]);cache={...cache,settings:settings||{},products:products||[],sales:sales||[],customers:customers||[],purchases:purchases||[],suppliers:suppliers||[],employees:employees||[],expenses:expenses||[],users:users||[]};saveCache();net(true,'Online / Synced');renderAll()}catch(e){net(false,'Offline / Cached');renderAll()}}
 if(!currentUser||!token){$("auth").classList.remove('hidden');$("app").classList.add('hidden')}else{$("auth").classList.add('hidden');$("app").classList.remove('hidden');net(false,'Checking connection…');renderAll();syncAll()}
-window.addEventListener('online',()=>syncAll());window.addEventListener('offline',()=>net(false,'Offline / Cached'));
+window.addEventListener('online',async()=>{await syncPendingSales();await syncAll();});window.addEventListener('offline',()=>net(false,'Offline / Cached'));
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 async function resetSalesHistory(){if(!currentUser||!['CEO','Manager'].includes(currentUser.role)){toast('Only CEO or Manager can clear sales history.');return;}if(!cache.sales.length){toast('There are no sales to clear.');return;}const ok=confirm('DANGER ZONE\\n\\nThis will permanently delete ALL sales for this business and restore their quantities to inventory.\\n\\nContinue?');if(!ok)return;const ok2=confirm('FINAL CONFIRMATION\\n\\nDelete all '+cache.sales.length+' sales?');if(!ok2)return;try{const result=await api('/api/sales/reset/all',{method:'DELETE'});cache.sales=[];saveCache();await syncAll();toast(`Sales cleared. ${result.deletedSales||0} sales deleted and ${result.restoredUnits||0} units restored.`);}catch(e){toast('Could not clear sales: '+e.message)}}
 function exportReport(period="month"){
